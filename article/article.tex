@@ -1,0 +1,392 @@
+% ============================================================
+%  Mouvement hélicoïdal des corpuscules et figure d'interférence
+%  de Young : simulation stochastique, lien avec le spin et piste
+%  de décalage vers le rouge.
+%  Prépublication v0.1 — compilé avec Tectonic.
+%  Figures : article/figures/*.pdf (générées par outils/genere_figures.py
+%  à partir des mesures batch outils/mesures_lot.js, noyau exact du
+%  simulateur interactif).
+% ============================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[french]{babel}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!45!black,citecolor=blue!45!black,urlcolor=blue!55!black,bookmarks=true,bookmarksnumbered=true,unicode=true]{hyperref}
+
+\geometry{a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+\widowpenalty=10000
+\clubpenalty=10000
+\emergencystretch=1.5em
+\setlength{\parskip}{0.25em}
+
+\hypersetup{
+  pdftitle={Mouvement hélicoïdal des corpuscules et figure d'interférence de Young},
+  pdfauthor={alexisfrlopez-debug},
+  pdfsubject={Simulation stochastique de l'expérience des fentes de Young : hélices, spin, redshift d'amplitude},
+  pdfkeywords={double slit, helical motion, zitterbewegung, spin, redshift, pilot-wave, stochastic simulation}
+}
+
+\newcommand{\dx}{\Delta x}
+\newcommand{\fichierstandalone}{\texttt{simulation\_\allowbreak fentes\_\allowbreak de\_\allowbreak Young\_\allowbreak .html}}
+
+\begin{document}
+
+% ------------------------------------------------------------
+% Bloc de titre (sans \maketitle)
+% ------------------------------------------------------------
+\begin{center}
+  {\LARGE\bfseries Mouvement hélicoïdal des corpuscules et figure\\[0.3em] d'interférence de Young\par}
+  \vspace{0.9em}
+  {\large Simulation stochastique, lien avec le spin et piste de décalage vers le rouge\par}
+  \vspace{1.8em}
+  {\normalsize [Nom de l'auteur --- à compléter avant publication]\par}
+  \vspace{0.5em}
+  {\small Prépublication, version 0.1 --- 25 novembre 2025\par}
+\end{center}
+
+\vspace{0.4em}
+\noindent\rule{\textwidth}{0.4pt}
+
+\vspace{0.2em}
+\begin{center}\small\textbf{\emph{Résumé}}\end{center}
+\noindent{\small Nous présentons un modèle phénoménologique dans lequel chaque corpuscule
+décrit une hélice de rayon $r$ autour d'un axe balistique et porte une phase interne
+$\phi = 2\pi s/\lambda$ qui avance avec le chemin parcouru. La probabilité de détection
+à l'abscisse $x$ est modulée par le facteur d'interférence
+$G(x) = \lvert \sum_i \mathrm{e}^{2\mathrm{i}\pi\Phi(L_i(x))} \rvert^2 / N^2$
+construit sur les $N$ chemins virtuels joignant les fentes au point d'impact.
+Un simulateur interactif 3D, open source et autonome (un seul fichier HTML),
+reproduit l'accumulation des franges corpuscule après corpuscule, sans aucune
+interaction inter-corpuscules. Les mesures batch sur le noyau exact du simulateur
+valident quantitativement le modèle : écart de frange mesuré $30{,}15$~mm contre
+$30{,}0$~mm théorique ; fraction détectée $50{,}2\,\%$ contre $1/N = 50\,\%$ ;
+modulation $M = 0{,}994$ en mode hélicoïdal contre $0{,}004$ en mode balistique pur.
+L'activation de collisions inter-corpuscules dégrade toujours la figure
+($M : 0{,}994 \to 0{,}981$), jamais l'inverse. Nous discutons enfin l'identification
+de l'hélice à la \emph{zitterbewegung} de Dirac (lien avec le spin), et une piste de
+décalage vers le rouge \emph{par évolution d'amplitude interne} sans perte d'énergie,
+distincte de la « lumière fatiguée » et confrontée à ses tests observationnels.}
+\vspace{0.35em}
+
+\noindent{\small\textbf{Mots-clés} : fentes de Young ; trajectoire hélicoïdale ;
+dualité onde-corpuscule ; zitterbewegung ; spin ; décalage vers le rouge ;
+simulation stochastique ; onde-pilote.}
+
+\vspace{0.2em}
+\begin{center}\small\textbf{\emph{Abstract}}\end{center}
+\noindent{\small We present a phenomenological model in which each corpuscle follows a
+helix of radius $r$ around a ballistic axis and carries an internal phase
+$\phi = 2\pi s/\lambda$ advancing with path length. Detection probability at abscissa
+$x$ is modulated by the interference factor $G(x) = \lvert \sum_i \mathrm{e}^{2\mathrm{i}\pi\Phi(L_i(x))} \rvert^2/N^2$
+built on the $N$ virtual slit-to-impact paths. An open-source, self-contained 3D
+simulator reproduces the fringe buildup corpuscle by corpuscle, with no
+inter-corpuscle interaction. Batch measurements on the exact simulation core validate
+the model quantitatively: measured fringe spacing $30.15$~mm vs $30.0$~mm theory;
+detection fraction $50.2\,\%$ vs $1/N = 50\,\%$; modulation $M = 0.994$
+(helical mode) vs $0.004$ (pure ballistic). Enabling inter-corpuscle collisions always
+degrades the pattern ($M: 0.994 \to 0.981$), never the reverse. We discuss the
+identification of the helix with Dirac's \emph{zitterbewegung} (spin connection),
+and a redshift route \emph{via internal amplitude evolution} without energy loss,
+distinct from tired light, together with its observational tests.}
+\vspace{0.35em}
+
+\noindent\rule{\textwidth}{0.4pt}
+
+\begin{tcolorbox}[colback=yellow!4, colframe=orange!60!black, title=\textbf{Avertissement scientifique}, fonttitle=\bfseries\small, coltitle=white]
+\small
+Le modèle implémenté et discuté ici est un modèle \textbf{phénoménologique de recherche} :
+le facteur de détection $G(x)$ est une hypothèse posée, non dérivée d'une dynamique
+fondamentale, et l'échelle des grandeurs est normalisée (grossie d'un facteur
+$\approx 1000$ par rapport à la lumière visible) afin que l'hélice individuelle d'un
+corpuscule soit observable. Ce travail ne prétend ni remplacer la mécanique quantique,
+ni remettre en cause le modèle cosmologique standard ; il propose un banc d'essai
+quantitatif pour explorer, mesurer et \emph{falsifier} deux hypothèses précises,
+en rendant chaque étape reproductible par un simulateur open source.
+\end{tcolorbox}
+
+% ============================================================
+\section{Introduction}\label{sec:intro}
+% ============================================================
+
+Le fait expérimental cardinal, pour toute discussion de la dualité onde-corpuscule,
+est que la figure d'interférence se construit \emph{particule après particule}.
+Taylor, dès 1909, obtient des franges identiques en lumière si faible que
+l'exposition s'étale sur des mois \cite{taylor1909} ; Merli, Missiroli et Pozzi
+montrent en 1976 l'interférence d'électrons détectés un à un \cite{merli1976} ;
+Tonomura et ses collaborateurs réalisent en 1989 l'expérience limite, où les
+électrons traversent l'appareil si espacés dans le temps que deux d'entre eux ne
+coexistent jamais à l'intérieur du montage --- et les franges apparaissent quand
+même \cite{tonomura1989} ; Bach et al.\ reproduisent en 2013 l'expérience imaginaire
+de Feynman avec masque mobile et accumulation événement par événement
+\cite{bach2013}. De ces expériences découle une conséquence directe et souvent
+sous-estimée : \emph{aucune interaction entre corpuscules ne peut être le mécanisme
+des franges}, puisqu'elles apparaissent en l'absence de toute simultanéité. Si
+interférence il y a, elle est interne au corpuscule : auto-interférence, ou
+guidage par une onde-pilote.
+
+La mécanique quantique standard tire de là sa position officielle : renoncer aux
+trajectoires individuelles et ne garder que la fonction d'onde. De Broglie, dès
+1927, et Bohm en 1952, défendent l'alternative : le corpuscule suit une trajectoire
+continue, guidée par une onde qui la traverse \cite{debroglie1927,bohm1952}. À
+l'échelle macroscopique, les gouttes « marchantes » de Couder et Fort ont fourni
+une analogie vivante de cette onde-pilote --- diffraction et interférence statistiques
+d'un objet corpusculaire unique \cite{couder2006,eddi2009} --- avant que la double
+fente des gouttes ne survive pas à la réplication : le pilot-wave hydrodynamique
+échoue sur ce point précis \cite{andersen2014,bush2015}. Le créneau reste ouvert :
+un corpuscule réel, une statistique exacte, mais un mécanisme \emph{interne} plutôt
+qu'une onde externe.
+
+Le présent travail occupe ce créneau avec l'outillage le plus simple possible.
+Chaque corpuscule y est décrit par un axe balistique (la trajectoire classique
+qu'aurait une particule ponctuelle) autour duquel il décrit une \textbf{hélice} de
+rayon $r$, et par une \textbf{phase interne} $\phi$ qui avance proportionnellement
+au chemin parcouru --- l'« horloge interne » au sens de de Broglie. La seule
+hypothèse supplémentaire (le « facteur de détection » $G(x)$, dit \emph{gâteau de
+détection} dans le code) est posée explicitement en section~\ref{sec:model} : la
+probabilité que le corpuscule soit détecté en un point de l'écran est modulée par
+la cohérence de phase entre les chemins virtuels passant par les différentes fentes.
+Le corpuscule chemine toujours par une fente unique, en une trajectoire continue ;
+aucune superposition d'états n'est invoquée ; et pourtant --- c'est le résultat
+central --- les franges de Young émergent statistiquement, avec les bons écarts,
+les bons contrastes et la bonne loi d'accumulation.
+
+Ce travail poursuit deux objectifs de recherche annoncés dès le départ, et un
+objectif de méthode. Premièrement, le lien entre l'hélice et le \emph{spin} :
+l'interprétation \emph{zitterbewegung} de Hestenes \cite{hestenes1990} lit
+l'électron comme une charge décrivant une hélice de rayon $\hbar/2mc$ le long de sa
+ligne d'univers, le spin $\hbar/2$ étant le moment orbital de ce mouvement interne.
+Le simulateur permet d'exhiber, en statistique, le minimum dont cette interprétation
+a besoin : une phase interne portée par un mouvement hélicoïdal suffit à produire
+l'interférence. Deuxièmement, une piste de \emph{décalage vers le rouge par évolution
+d'amplitude interne} : si la longueur d'onde interne $\lambda(s)$ glisse avec la
+distance parcourue, la phase cumulée se déforme exactement comme le ferait un
+décalage spectral --- mais \emph{sans perte d'énergie}, ce qui distingue
+structurellement cette hypothèse de la « lumière fatiguée » de Zwicky
+\cite{zwicky1929}. Troisièmement, la méthode : tout est mesuré, exporté et
+reproductible ; le lecteur peut relancer chaque figure avec deux commandes.
+
+L'article est organisé comme suit. La section~\ref{sec:model} pose le modèle et
+ses hypothèses, en marquant ce qui est construit et ce qui est posé. La
+section~\ref{sec:sim} décrit le simulateur interactif et le protocole de mesure.
+La section~\ref{sec:res} présente les résultats quantitatifs (franges, émergence
+particule par particule, variantes photon/massif, collisions, étirement
+$\varepsilon$). La section~\ref{sec:spin} discute le lien spin/zitterbewegung, la
+section~\ref{sec:redshift} la piste de décalage vers le rouge et ses tests
+observationnels, la section~\ref{sec:limites} les limites déclarées du modèle, et la
+section~\ref{sec:ccl} conclut. L'annexe~\ref{sec:repro} fixe les conditions de
+reproductibilité.
+
+% ============================================================
+\section{Le modèle}\label{sec:model}
+% ============================================================
+
+\subsection{Unités et échelle normalisée}
+
+Le simulateur travaille en millimètres, à une échelle volontairement
+\textbf{normalisée} : $\lambda \approx 0{,}15$~mm, fentes millimétriques, écran à
+$D \approx 800$~mm. Ces valeurs reproduisent les \emph{rapports} de l'expérience
+réelle --- en particulier $\lambda/d$, qui fixe l'écart des franges
+$\dx = \lambda D/d$ --- tout en grossissant l'ensemble d'un facteur $\approx 1000$
+par rapport à la lumière visible, afin que l'hélice individuelle d'un corpuscule
+soit observable à l'écran de la simulation. Aucune prétention quantitative sur les
+hélices réelles (longueur de Compton) n'est attachée à ce choix ;
+la section~\ref{sec:limites} y revient.
+
+\subsection{Corpuscule : axe balistique, hélice, phase interne}
+
+Chaque corpuscule est émis de la source avec :
+\begin{itemize}[leftmargin=1.6em,itemsep=0.15em]
+  \item un \textbf{axe balistique} : position latérale initiale aléatoire dans le
+        faisceau, direction moyenne $+z$ ;
+  \item une \textbf{hélice} de rayon $r$ enroulée autour de cet axe : la position
+        réelle du corpuscule est
+        \begin{equation}\label{eq:helice}
+          \vec{r}(s) \;=\; \vec{r}_{\mathrm{axe}}(s)
+          \;+\; r\cos\phi\,(s)\,\hat{u}_1 \;+\; r\sin\phi\,(s)\,\hat{u}_2 ,
+        \end{equation}
+        où $\hat u_1, \hat u_2$ sont deux directions transverses fixes ;
+  \item une \textbf{phase interne} $\phi$ qui joue le rôle d'horloge :
+        \begin{equation}\label{eq:phase}
+          \phi(s) \;=\; \phi_0 \;+\; 2\pi\,\frac{s}{\lambda},
+        \end{equation}
+        $s$ étant le chemin parcouru le long de l'axe et $\phi_0$ une phase
+        initiale aléatoire uniforme.
+\end{itemize}
+Le mode \textbf{balistique pur} supprime la phase et son rôle dans la détection :
+c'est la référence classique de l'expérience --- deux taches de diffraction sans
+franges. Le sens d'enroulement de l'hélice (paramètre \emph{spin} $\pm 1$ du
+simulateur) inverse le sens de rotation de $\phi$ ; il est discuté en
+section~\ref{sec:spin}.
+
+\subsection{Franchissement du mur : photon versus corpuscule massif}
+
+Au franchissement du plan du mur, la position testée est le point \emph{réel} de
+l'hélice, $x_r = x_{\mathrm{axe}} + r\cos\phi$, et non l'axe seul. Deux
+comportements distincts sont implémentés, conformément à la demande physique :
+\begin{itemize}[leftmargin=1.6em,itemsep=0.15em]
+  \item \textbf{photon} : si le point réel tombe sur la paroi, le corpuscule est
+        \textbf{absorbé} (compteur « absorbées », éclat sur le mur) --- un photon
+        n'est pas dévié par l'arête d'une fente, il est capturé par le matériau ;
+  \item \textbf{corpuscule massif} : le contact d'une arête produit une
+        \textbf{diffusion élastique} (nouvelle direction aléatoire autour de la
+        direction incidente, ralentissement) ; le corpuscule continue et peut
+        atterrir n'importe où sur l'écran, formant un halo diffusif autour des
+        taches --- les particules massives \emph{sont} déviées par les bords.
+\end{itemize}
+
+\subsection{Diffraction post-fente (enveloppe)}
+
+Au passage d'une fente, l'axe du corpuscule reçoit un écart angulaire aléatoire
+$\theta_x$ tiré d'une loi au choix : par défaut la loi de Fraunhofer
+$\mathrm{sinc}^2(\pi a \theta_x/\lambda)$ (tirage par rejet), qui reproduit
+statistiquement l'enveloppe de diffraction d'une fente de largeur $a$ ; une loi
+gaussienne d'écart-type réglable ; ou l'ombre géométrique pure. Cette étape est une
+\textbf{correspondance construite} et déclarée comme telle : le corpuscule « prend »
+l'étalement que la théorie ondulatoire prédit pour la fente qu'il traverse ;
+c'est un paramètre du modèle, pas une dérivation
+(voir la discussion des limites, section~\ref{sec:limites}).
+
+\subsection{Le facteur de détection $G(x)$ (hypothèse centrale)}
+
+À l'arrivée sur l'écran, à l'abscisse $x$, la probabilité que le corpuscule soit
+détecté est modulée par
+\begin{equation}\label{eq:gateau}
+  G(x) \;=\; \frac{1}{N^2}\,
+  \Bigl\lvert \sum_{i=1}^{N} \exp\!\bigl(2\mathrm{i}\pi\,\Phi(L_i(x))\bigr)
+  \Bigr\rvert^{2},
+\end{equation}
+où $N$ est le nombre de fentes ouvertes, $L_i(x) = \sqrt{D^2 + (x - x_i)^2}$ est la
+longueur du \emph{chemin virtuel} joignant la fente $i$ au point d'impact, et
+$\Phi$ la phase cumulée le long d'un chemin (section~\ref{sec:amplitude}). Le
+corpuscule traverse \emph{une} fente réelle ; mais sa phase interne, arrivée en $x$,
+« compare » les $N$ chemins virtuels : la détection est favorisée là où les
+phases concordent, défavorisée là où elles s'annulent. Pour $N=2$,
+$G = \cos^2\!\bigl(\pi\,\Delta\Phi(x)\bigr)$ : les franges de Young. Pour $N=1$,
+$G = 1$ : une fente unique ne produit aucune frange, et l'enveloppe de diffraction
+seule reste --- le simulateur retrouve automatiquement ce fait expérimental.
+
+C'est l'hypothèse phénoménologique centrale du modèle, à la croisée de la double
+solution de de Broglie et de l'auto-interférence. Elle est posée, pas dérivée.
+Elle a toutefois une conséquence interne immédiatement vérifiable : en moyenne,
+$\langle G \rangle = 1/N$, donc la fraction de corpuscules « non détectés » à
+l'écran doit tendre vers $1 - 1/N$ ($50\,\%$ pour la double fente). La
+section~\ref{sec:res} confirme ce prédicat à $0{,}2\,\%$ près. L'histogramme mesuré
+sur l'écran vaut (densité d'axes arrivant en $x$) $\times\, G(x)$ : les franges
+émergent \emph{statistiquement, corpuscule après corpuscule}, sans interaction
+entre corpuscules.
+
+\subsection{Évolution d'amplitude avec la distance (étude « redshift »)}
+\label{sec:amplitude}
+
+La dernière loi du modèle est un paramètre d'étude : la longueur d'onde interne
+peut glisser le long du trajet,
+\begin{equation}\label{eq:lambdas}
+  \lambda(s) \;=\; \lambda\,\Bigl(1 + \varepsilon\,\frac{s}{S_0}\Bigr),
+  \qquad S_0 = 1000~\mathrm{mm},
+\end{equation}
+où $\varepsilon$ est un paramètre sans dimension. La phase cumulée devient
+l'intégrale exacte le long du chemin :
+\begin{equation}\label{eq:phaseL}
+  \Phi(L) \;=\; \int_0^L \frac{\mathrm{d}s}{\lambda(s)}
+  \;=\; \frac{S_0}{\lambda\,\varepsilon}\,
+  \ln\!\Bigl(1 + \varepsilon\,\frac{L}{S_0}\Bigr)
+  \qquad (\varepsilon \to 0 : \; L/\lambda).
+\end{equation}
+Conséquence directe sur la figure de diffraction : les franges sont \emph{étirées},
+l'écart local devenant $\dx(s) \approx \lambda(s)\,D/d$. On peut définir un
+\emph{décalage effectif simulé} $z_{\mathrm{eff}} = \varepsilon\,D/S_0$ et une
+longueur d'onde effective à l'écran $\lambda_{\mathrm{eff}} = \lambda(1 +
+z_{\mathrm{eff}})$ : avec $\varepsilon = 0{,}3$ et $D = 800$~mm, $z_{\mathrm{eff}}
+= 0{,}24$ et $\lambda_{\mathrm{eff}}/\lambda = 1{,}24$. Il s'agit de l'analogue,
+dans l'espace des phases internes, d'un décalage vers le rouge --- mais
+\emph{sans perte d'énergie du corpuscule} : le décalage vient de l'évolution de
+l'horloge interne, pas d'une friction. La section~\ref{sec:redshift} discute ce que
+cette distinction change pour les tests cosmologiques.
+
+% ============================================================
+\section{Le simulateur et le protocole de mesure}\label{sec:sim}
+% ============================================================
+
+\subsection{Architecture et diffusion}
+
+Le simulateur est un fichier HTML unique et autonome d'environ $660$~Ko,
+\fichierstandalone, qui contient le moteur 3D Three.js
+r128 embarqué : il s'ouvre d'un double-clic, sans installation ni connexion, sous
+Windows, Linux ou macOS. Le code source est organisé en trois modules
+lisibles : \texttt{noyau.js} (physique : hélice, phase, gâteau, collisions),
+\texttt{rendu.js} (scène 3D, écran-texture, traînées d'hélices, éclats
+d'absorption/diffusion) et \texttt{interface.js} (commandes, profil d'intensité
+en direct, export CSV) ; le script Python \texttt{construire\_standalone.py}
+reconstruit le fichier autonome à partir des sources. La caméra est libre (orbite,
+zoom, translation à la souris), chaque corpuscule est visible individuellement
+avec sa traînée hélicoïdale, et l'écran accumule les impacts en temps réel.
+
+Tous les paramètres sont réglables en direct : mode (hélicoïdal / balistique pur),
+type de corpuscule (photon / massif) et sens du spin, débit et vitesse d'émission,
+largeur du faisceau, nombre de fentes (1 à 5), largeur $a$, écart $d$, hauteur des
+fentes, distance de l'écran $D$, $\lambda$ physique, rayon d'hélice $r$, loi de
+divergence, activation des collisions inter-corpuscules (et leur rayon), $\lambda$
+et rayon \emph{visuels} (rendu seul), et $\varepsilon$ (étude redshift). Le
+tableau~\ref{tab:params} fixe les valeurs par défaut utilisées dans toutes les
+mesures de la section~\ref{sec:res}.
+
+\begin{table}[t]
+\centering\small
+\caption{Paramètres par défaut du simulateur (unités normalisées, mm).}
+\label{tab:params}
+\begin{tabular*}{0.86\textwidth}{@{\extracolsep{\fill}} l l l}
+\toprule
+Grandeur & Symbole & Valeur par défaut \\
+\midrule
+Longueur d'onde interne & $\lambda$ & $0{,}15$~mm \\
+Rayon d'hélice (physique) & $r$ & $0{,}35$~mm \\
+Largeur de fente & $a$ & $1{,}6$~mm \\
+Écart des fentes & $d$ & $4{,}0$~mm \\
+Nombre de fentes & $N$ & 2 \\
+Distance écran & $D$ & $800$~mm \\
+Largeur du faisceau & --- & $10$~mm \\
+Vitesse des corpuscules & $v$ & $140$~mm/s \\
+Échelle d'amplitude & $S_0$ & $1000$~mm \\
+Évolution d'amplitude & $\varepsilon$ & $0$ (référence) ou $+0{,}3$ \\
+Pas d'intégration batch & $\mathrm{d}t$ & $0{,}05$~s \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\subsection{Mesures batch et métriques}
+
+Les résultats de cet article ne sont pas des captures d'écran : ils proviennent de
+runs \emph{batch} du noyau physique exact du simulateur (le même fichier
+\texttt{noyau.js}), exécutés sans rendu par \texttt{mesures\_lot.js}
+(Node.js, sans dépendance) : six configurations, de $6\times10^4$ à
+$1{,}2\times10^5$ émissions chacune, quelques secondes de calcul au total.
+L'histogramme d'impacts est constitué de $240$ bins sur $x \in [-200, 200]$~mm
+(résolution $1{,}67$~mm) ; chaque run exporte le comptage, l'intensité normalisée
+et la courbe théorique en CSV, avec les compteurs (émises, détectées, absorbées au
+mur, diffusées aux arêtes, non détectées, collisions).
+
+Deux métriques sont utilisées. La \emph{modulation de frange} est l'amplitude de la
+première harmonique de frange, normalisée par le niveau moyen :
+\begin{equation}\label{eq:M}
+  M(\dx) \;=\; \frac{2\,\bigl\lvert \sum_j h_j\,
+  \mathrm{e}^{2\mathrm{i}\pi x_j/\dx} \bigr\rvert}{\sum_j h_j},
+\end{equation}
+où $h_j$ est le comptage du bin $j$ d'abscisse $x_j$ et la somme porte sur la
+fenêtre centrale $|x| \le 75$~mm. Pour des franges parfaites de type
+$\cos^2$, $M = 1$ ; pour une enveloppe lisse sans franges, $M \approx 0$.
+L'\emph{écart de frange mesuré} est la valeur de $\dx$ qui maximise $M(\dx)$
+(balayage de $\dx$, section~\ref{sec:res}) ; il est à comparer à la valeur
+théorique $\lambda D/d$ sans aucun ajustement.
+
+\input{part2}
+
+\end{document}

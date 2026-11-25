@@ -1,0 +1,87 @@
+{
+  "ballistique": {
+    "M": 0.004365975525369328
+  },
+  "helicoide": {
+    "M": 0.9943617493937223,
+    "espacement_mesure_mm": 30.15,
+    "espacement_theorique_mm": 30.0,
+    "maxima_mm": [
+      -29.2,
+      0.8,
+      27.5
+    ]
+  },
+  "mono_fente": {
+    "M": 0.021765192955914038
+  },
+  "massif": {
+    "M": 0.9936904330471739
+  },
+  "collisions": {
+    "M": 0.9811976180523323
+  },
+  "redshift": {
+    "M": 1.0020120041349314,
+    "espacement_mesure_mm": 37.4,
+    "espacement_theorique_mm": 37.2
+  },
+  "fractions": {
+    "ballistique": {
+      "emises": 120000,
+      "detectees": 37975,
+      "absorbees": 81634,
+      "diffusees": 0,
+      "indetectees": 0,
+      "collisions": 0,
+      "fraction_detectee_par_passe": 1.0
+    },
+    "helicoide": {
+      "emises": 120001,
+      "detectees": 19025,
+      "absorbees": 81713,
+      "diffusees": 0,
+      "indetectees": 18869,
+      "collisions": 0,
+      "fraction_detectee_par_passe": 0.5021
+    },
+    "mono_fente": {
+      "emises": 60007,
+      "detectees": 9135,
+      "absorbees": 50480,
+      "diffusees": 0,
+      "indetectees": 0,
+      "collisions": 0,
+      "fraction_detectee_par_passe": 1.0
+    },
+    "massif": {
+      "emises": 60000,
+      "detectees": 29703,
+      "absorbees": 0,
+      "diffusees": 40732,
+      "indetectees": 29900,
+      "collisions": 0,
+      "fraction_detectee_par_passe": 0.4983
+    },
+    "redshift": {
+      "emises": 60002,
+      "detectees": 9509,
+      "absorbees": 40594,
+      "diffusees": 0,
+      "indetectees": 9506,
+      "collisions": 0,
+      "fraction_detectee_par_passe": 0.5001
+    },
+    "collisions": {
+      "emises": 60001,
+      "detectees": 8944,
+      "absorbees": 41671,
+      "diffusees": 0,
+      "indetectees": 8994,
+      "collisions": 1355,
+      "fraction_detectee_par_passe": 0.4986
+    }
+  },
+  "dx_theorique_mm": 30.0,
+  "dx_redshift_mm": 37.2
+}

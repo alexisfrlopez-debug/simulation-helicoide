@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "title": "Mouvement hélicoïdal des corpuscules et figure d'interférence de Young : simulation stochastique, lien avec le spin et piste de décalage vers le rouge",
+    "upload_type": "publication",
+    "publication_type": "article",
+    "description": "<p>Chaque corpuscule suit une hélice de rayon r autour d'un axe balistique et porte une phase interne φ = 2π·s/λ. La probabilité de détection est modulée par le facteur d'interférence G(x) = |Σ e^{2iπΦ(Lᵢ(x))}|²/N² construit sur les N chemins virtuels des fentes. Un simulateur interactif 3D open source (fichier HTML autonome) reproduit l'accumulation des franges corpuscule après corpuscule, sans interaction inter-corpuscules. Validations quantitatives sur runs batch : écart de frange mesuré 30,15 mm contre 30,0 mm théorique ; fraction détectée 50,21 % contre 1/N = 50 % ; modulation M = 0,994 (hélicoïdal) contre 0,004 (balistique pur) ; mono-fente : enveloppe seule ; photon absorbé au mur contre massif dévié ; collisions : dégradation systématique ; évolution d'amplitude ε : franges étirées comme un décalage vers le rouge sans perte d'énergie. Discussion : identification hélice ↔ zitterbewegung (spin) et piste de décalage vers le rouge distincte de la lumière fatiguée, avec ses tests observationnels (Tolman, dilatation temporelle des SNe Ia). Modèle phénoménologique, entièrement reproductible (Node.js + Python).</p>",
+    "creators": [
+      {
+        "name": "à compléter",
+        "affiliation": "à compléter"
+      }
+    ],
+    "keywords": [
+      "fentes de Young",
+      "trajectoire hélicoïdale",
+      "dualité onde-corpuscule",
+      "zitterbewegung",
+      "spin",
+      "décalage vers le rouge",
+      "simulation stochastique",
+      "onde-pilote"
+    ],
+    "license": "CC-BY-4.0",
+    "language": "fre",
+    "version": "0.1",
+    "publication_date": "2025-11-25",
+    "notes": "Prépublication v0.1. Code source : https://github.com/alexisfrlopez-debug/simulation-helicoide (MIT) ; article sous CC BY 4.0."
+  }
+}

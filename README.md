@@ -44,12 +44,22 @@ librairies/three.min.js           Three.js r128 (MIT)
 librairies/OrbitControls.js       contrôles caméra (MIT)
 outils/construire_standalone.py   reconstruit le HTML autonome
 outils/genere_profil_reference.py génère les CSV de référence
+outils/mesures_lot.js             runs batch headless du noyau (6 configurations)
+outils/genere_figures.py          figures + métriques de l'article (matplotlib)
 data/profil_intensite_reference.csv          courbe théorique (ε = 0)
 data/profil_intensite_redshift_exemple.csv   courbe théorique (ε = +0,3)
+data/mesures_*.csv                histogrammes mesurés (runs batch du noyau)
+data/mesures_resume.json          compteurs et visibilités des runs
+data/mesures_metriques.json       métriques citées dans l'article
 docs/modele_physique.md           le modèle, ses hypothèses et ses limites
 docs/revue_litteraire.md          travaux antérieurs (Taylor→Bach, de Broglie,
                                   Couder, Hestenes, Zwicky) avec références
 docs/plan_article_zenodo.md       plan de l'article + mode opératoire Zenodo
+docs/depot_zenodo.md              métadonnées + mode opératoire du dépôt Zenodo
+article/article.tex, part2.tex    prépublication (LaTeX, français)
+article/cover.html               couverture (HTML, rendue via html2poster)
+article/figures/*.pdf             figures vectorielles de l'article
+article/prepublication.pdf        PDF compilé : couverture + 13 pages
 ```
 
 Reconstruire le HTML autonome après modification des sources :
@@ -74,11 +84,10 @@ le rôle (nul) des collisions inter-corpuscules dans les franges.
 
 ## Auteur du dépôt git
 
-L'auteur des commits est provisoirement « Simulation Hélicoïdale
-<simulation-helicoide@example.org> » — à personnaliser :
+Les commits sont signés par l'identité GitHub du compte
+`alexisfrlopez-debug` (email `282550634+alexisfrlopez-debug@users.noreply.github.com`).
+Pour personnaliser avec votre nom réel :
 ```bash
 git config user.name "Votre nom"
 git config user.email "vous@exemple.fr"
-git commit --amend --reset-author --no-edit   # si un seul commit à corriger
 ```
-ou réécrire l'historique complet avec `git filter-branch` / `git rebase`.
