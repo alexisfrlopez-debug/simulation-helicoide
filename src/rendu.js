@@ -168,7 +168,15 @@ function majPositionsEcran() {
 }
 
 /* ---------- corpuscules : maillots + traînées ---------- */
-function couleurParticule() { return P.type === 'photon' ? 0xffd766 : 0x69b7ff; }
+/* Couleur selon le type ; si « Colorer selon le sens du spin » est
+   coché, les corpuscules anti-horaires prennent une teinte distincte
+   (mélange 50/50 des deux sens → population bicolore lisible en 3D). */
+function couleurParticule(pp) {
+  if (pp && ETAT.affichage.couleurSpin && pp.spin === -1) {
+    return P.type === 'photon' ? 0xff8fd9 : 0x9dffc4;   // anti-horaire
+  }
+  return P.type === 'photon' ? 0xffd766 : 0x69b7ff;   // horaire
+}
 
 function obtenirMesh(i) {
   while (poolMeshes.length <= i) {
@@ -193,7 +201,7 @@ function obtenirMesh(i) {
 function majTrainee(ligne, pp) {
   if (!ETAT.affichage.trainees) { ligne.visible = false; return; }
   ligne.visible = true;
-  ligne.material.color.setHex(couleurParticule());
+  ligne.material.color.setHex(couleurParticule(pp));
   const pos = ligne.geometry.attributes.position;
   const rVis = P.rayonHelice * P.echelleHelice;
   const lamV = Math.max(P.lambdaVis, 0.05);
@@ -204,7 +212,7 @@ function majTrainee(ligne, pp) {
   for (let k = 0; k < 64; k++) {
     const zk = pp.z - k * pasZ;
     if (pp.passe && zk < 0) break;
-    const ph = pp.phiVis - P.spin * 2 * Math.PI * k * pasZ / lamV;
+    const ph = pp.phiVis - pp.spin * 2 * Math.PI * k * pasZ / lamV;
     pos.setXYZ(n++,
       pp.xAxe - k * pasZ * penteX + rVis * Math.cos(ph),
       pp.yAxe - k * pasZ * penteY + rVis * Math.sin(ph),
@@ -272,7 +280,7 @@ function majRendu(dt) {
     const pp = ETAT.particules[i];
     const m = obtenirMesh(i);
     m.visible = true;
-    m.material.color.setHex(couleurParticule());
+    m.material.color.setHex(couleurParticule(pp));
     const rVis = P.rayonHelice * P.echelleHelice;
     m.position.set(
       pp.xAxe + rVis * Math.cos(pp.phiVis),
@@ -313,11 +321,23 @@ function vueEcran() {
   if (controls) { controls.target.set(0, 0, P.distanceEcran); controls.update(); }
 }
 
-/* ---------- boucle principale ---------- */
+/* ---------- boucle principale ----------
+   PAS DE TEMPS FIXE (déterminisme) : le temps réel est accumulé puis
+   consommé par quanta exacts de 1/60 s. La physique ne dépend donc JAMAIS
+   de la cadence d'affichage — deux rejeux de la même configuration
+   (mêmes paramètres, même graine) produisent la même séquence d'impacts,
+   que la machine affiche 30, 60 ou 144 images/s. */
+const DT_FIXE = 1 / 60;
 function boucle() {
   requestAnimationFrame(boucle);
-  const dt = Math.min(horloge.getDelta(), 0.05);
-  if (!ETAT.enPause) pasSimulation(dt);
+  const dt = Math.min(horloge.getDelta(), 0.10);
+  if (!ETAT.enPause) {
+    ETAT.accTemps = Math.min(ETAT.accTemps + dt, DT_FIXE * 6);
+    while (ETAT.accTemps >= DT_FIXE) {
+      ETAT.accTemps -= DT_FIXE;
+      pasSimulation(DT_FIXE);
+    }
+  }
   majRendu(dt);
   if (renderer) {
     try { controls.update(); renderer.render(scene, camera); } catch (e) { /* rendu interrompu */ }

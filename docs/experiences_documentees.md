@@ -72,12 +72,15 @@ non circulaire, donc falsifiable).
 
 ## Validation (runs headless du noyau exact, 4 000 impacts)
 
+Générateur déterministe depuis la version « rejeu à l'identique » : ces
+nombres sont **strictement reproductibles** (graines canoniques ci-dessous).
+
 | Expérience | Δx réel | Δx mesuré | Écart |
 |---|---|---|---|
-| Photon He–Ne | 23,74 mm | 23,80 mm | 0,27 % |
-| Électron (Bach) | 178,6 µm | 174,1 µm | 2,53 % |
-| C₆₀ (Arndt) | 30,00 µm | 30,13 µm | 0,43 % |
-| Neutron (Zeilinger) | 100,0 µm | 97,3 µm | 2,67 % |
+| Photon He–Ne | 23,74 mm | 23,89 mm | 0,63 % |
+| Électron (Bach) | 178,6 µm | 174,6 µm | 2,24 % |
+| C₆₀ (Arndt) | 30,00 µm | 30,01 µm | 0,03 % |
+| Neutron (Zeilinger) | 100,0 µm | 98,2 µm | 1,78 % |
 
 Étude de robustesse (10 répétitions par niveau) : estimation juste (≤ 8 %)
 dans 100 % des cas dès ~400 impacts détectés ; en dessous, l'estimateur
@@ -85,15 +88,86 @@ retourne « accumulation… » ou un écart visible — le verdict invite alors 
 accumuler davantage. Les scripts : `outils/` du dépôt git et l'article
 (mesures batch) documentent la méthode.
 
+## Rejeu à l'identique (déterminisme)
+
+Trois mécanismes rendent chaque rejeu **rigoureusement identique, particule
+après particule** :
+
+1. **Générateur seedé (mulberry32)** — toutes les décisions stochastiques
+   (émission, phase initiale, sens du spin en mélange, divergence
+   post-fente, diffusion sur l'arête, rejet du gâteau G(x)) tirent de flux
+   seedés par une **graine** (panneau *Reproductibilité*). « Purger » remet
+   le flux à la graine : la même configuration rejoue la même séquence
+   d'impacts. Deux flux indépendants — géométrie / détection — font que
+   changer la loi de détection ne perturbe jamais le flux de corpuscules ;
+2. **Pas de temps fixe (60 Hz)** — le temps réel est accumulé puis consommé
+   par quanta exacts de 1/60 s : la physique ne dépend jamais de la cadence
+   d'affichage (30, 60 ou 144 images/s donnent la même séquence) ;
+3. **Graines canoniques** — chaque expérience documentée possède une graine
+   stable (FNV-1a de son identifiant) : le rejeu est identique d'une
+   session ou d'une machine à l'autre, **navigateur et banc headless
+   compris** (le run de validation ci-dessus est celui du navigateur).
+
+| Expérience | Graine canonique |
+|---|---|
+| Photon He–Ne (OpenStax) | 3717060512 |
+| Électron (Bach 2013) | 983603173 |
+| Fullerène C₆₀ (Arndt 1999) | 3144428501 |
+| Neutron (Zeilinger 1988) | 3424947339 |
+
+Le rejeu **préserve vos réglages** de mode et de sens du spin. Décocher
+« graine canonique » permet d'imposer sa propre graine (étude de
+robustesse : relancer avec plusieurs graines et vérifier la stabilité de
+l'interfrange). Le CSV exporté consigne la graine et le mode de spin.
+
+## Témoin balistique pur — contrôle falsifiable
+
+Le bouton **« Témoin balistique pur (les deux spins) »** rejoue la MÊME
+expérience (même graine canonique) en mode balistique pur, avec le
+**mélange 50/50 des deux sens de spin**. Grâce à la séparation des flux
+géométrie/détection, le témoin reçoit **exactement le même flux de
+corpuscules** que le rejeu hélicoïdal — mêmes émissions, mêmes
+franchissements de fente, mêmes absorptions/diffusions — seule la loi de
+détection diffère (voir `outils/test_rejeu_deterministe.js`) :
+
+| Vérification headless (4 expériences × 2 000 impacts) | Résultat |
+|---|---|
+| rejeu hélicoïdal ×2 → histogrammes/compteurs | identiques (octet par octet) |
+| rejeu balistique ×2 → histogrammes/compteurs | identiques (octet par octet) |
+| émissions / absorptions / diffusions hélicoïdal vs témoin | identiques (même flux) |
+| interfrange du témoin | **aucune périodicité détectable** |
+
+Le témoin **ne reproduit pas** l'interfrange documenté : sans phase
+interne, l'accumulateur ne collecte que l'enveloppe de diffraction — la
+carte de comparaison l'affiche explicitement (« aucune frange » ou un
+écart important). C'est le résultat attendu du contrôle : l'écart entre le
+témoin et la théorie λL/d mesure précisément ce que la phase interne
+apporte au modèle hélicoïdal.
+
+## Sens du spin
+
+Le sélecteur propose horaire (+1), anti-horaire (−1) et **« les deux —
+mélange 50/50 »** : le sens est alors propre à chaque corpuscule (comptés
+séparément dans les statistiques, visualisables en cochant « Colorer selon
+le sens du spin »). Le tirage du spin est toujours consommé dans le flux
+géométrique, même en sens imposé : changer le sens ne désynchronise jamais
+le flux de corpuscules — rejeu à l'identique garanti quel que soit le
+réglage.
+
 ## Reproduire
 
 1. ouvrir `simulation_fentes_de_Young.html` ;
 2. choisir une expérience dans **Expériences documentées** ;
-3. cliquer **Rejouer cette expérience** — la maquette s'injecte, l'histogramme
-   est purgé, la carte de comparaison apparaît ;
-4. laisser la figure se construire (~400 impacts) : le verdict « ✓ Compatible »
-   confirme la reproduction de l'interfrange documenté ;
-5. exporter le profil (bouton *Exporter CSV*) si besoin d'archiver.
+3. cliquer **Rejouer cette expérience** — la maquette s'injecte, la
+   graine canonique s'affiche, l'histogramme est purgé, la carte de
+   comparaison apparaît ;
+4. laisser la figure se construire (~400 impacts) : le verdict
+   « ✓ Compatible » confirme la reproduction de l'interfrange documenté ;
+5. cliquer **Purger** puis relancer : la séquence d'impacts est identique
+   à la précédente (rejeu déterministe) ;
+6. cliquer **Témoin balistique pur (les deux spins)** : même graine, même
+   flux de corpuscules, aucune frange — le contrôle falsifiable ;
+7. exporter le profil (bouton *Exporter CSV*) si besoin d'archiver.
 
 ## Limites
 

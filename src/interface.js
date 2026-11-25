@@ -136,9 +136,11 @@ function majStats() {
   const taux = c.emises > 0 ? (100 * c.detectees / c.emises).toFixed(1) : '0.0';
   $('stats').innerHTML =
     'émises : <b>' + c.emises + '</b> · détectées : <b>' + c.detectees + '</b> (' + taux + ' %)<br>' +
+    'spin +1 : émis <b>' + c.emisPlus + '</b> · détectés <b>' + c.detectPlus + '</b>' +
+    ' — spin −1 : émis <b>' + c.emisMoins + '</b> · détectés <b>' + c.detectMoins + '</b><br>' +
     'absorbées (mur) : <b>' + c.absorbees + '</b> · diffusées (arête) : <b>' + c.diffusees + '</b><br>' +
     'non détectées (phase) : <b>' + c.indetectees + '</b> · collisions : <b>' + c.collisions + '</b><br>' +
-    'en vol : <b>' + ETAT.particules.length + '</b> · t<sub>sim</sub> : <b>' + ETAT.tSim.toFixed(1) + ' s</b><br>' +
+    'en vol : <b>' + ETAT.particules.length + '</b> · t<sub>sim</sub> : <b>' + ETAT.tSim.toFixed(1) + ' s</b> · graine : <b>' + ETAT.graine + '</b><br>' +
     'écart de frange Δx = λ<sub>eff</sub>·D/d : <b>' + dxThe.toFixed(1) + ' mm</b><br>' +
     'visibilité V = (I<sub>max</sub>−I<sub>min</sub>)/(I<sub>max</sub>+I<sub>min</sub>) : <b>' +
     (V === null ? '—' : V.toFixed(3)) + '</b>';
@@ -175,10 +177,30 @@ function imposerParametres(patch) {
   majLectureRouge();
 }
 
-/* ---------- rejouer une expérience documentée ---------- */
-function rejouerExperience(exp) {
+/* ---------- rejouer une expérience documentée ----------
+   Le rejeu préserve les réglages de MODE et de SPIN de l'utilisateur
+   (hélicoïdal par défaut) ; « forcer » permet au bouton « Témoin
+   balistique pur » d'imposer mode balistique + mélange des deux spins.
+   Graine : canonique de l'expérience (stable d'une session à l'autre)
+   si ETAT.graineCanonique, sinon la graine saisie. La purge qui suit
+   réinitialise le générateur → le rejeu est identique, particule après
+   particule, sur n'importe quelle machine. */
+function rejouerExperience(exp, forcer) {
   const m = mapperExperience(exp);
+  if (forcer) {
+    if (forcer.mode) m.patch.mode = forcer.mode;
+    if (forcer.spin !== undefined) m.patch.spin = forcer.spin;
+  }
   imposerParametres(m.patch);
+  let graine;
+  if (ETAT.graineCanonique) {
+    graine = graineExperience(exp.signature || exp.id);
+  } else {
+    const v = parseInt($('iGraine').value, 10);
+    graine = (isNaN(v) ? 42 : v) >>> 0;
+  }
+  ETAT.graine = graine;
+  $('iGraine').value = String(graine);
   purger();
   repeindreFondEcran();
   if (texEcran) texEcran.needsUpdate = true;
@@ -186,6 +208,8 @@ function rejouerExperience(exp) {
     exp: exp,
     dxReel: m.dxReel,
     sigma: calibrerSigma(m.dxReel),
+    graine: graine,
+    contexte: { mode: P.mode, spin: P.spin },
     modifie: false,
   };
   $('avertConfig').style.display = 'none';
@@ -197,6 +221,11 @@ function rejouerExperience(exp) {
 }
 
 /* ---------- carte de comparaison (expérience active) ---------- */
+function libelleMode(m) { return m === 'ballistique' ? 'balistique pur' : 'hélicoïdal'; }
+function libelleSpin(s) {
+  if (s === 0) return 'les deux (50/50)';
+  return s > 0 ? '+1 (horaire)' : '−1 (anti-horaire)';
+}
 function afficherCarteExperience() {
   const ex = ETAT.experience;
   if (!ex) { $('carteExperience').classList.add('cache'); return; }
@@ -206,6 +235,7 @@ function afficherCarteExperience() {
   $('expTitre').textContent = e.titre + ' (' + e.annee + ')';
   $('expDxTheo').textContent = formatLongueurM(ex.dxReel);
   $('expDxDoc').textContent = (e.dxDocumente !== undefined) ? formatLongueurM(e.dxDocumente) : 'non publié';
+  $('expGraine').textContent = ex.graine + ' · ' + libelleMode(ex.contexte.mode) + ' · spin ' + libelleSpin(ex.contexte.spin);
   let donnees = 'Données : λ = ' + formatLongueurM(e.lambda) + ' · a = ' + formatLongueurM(e.a) +
     ' · d = ' + formatLongueurM(e.d) + ' · L = ' + formatLongueurM(e.L) + ' · ' +
     (e.nbFentes >= 8 ? 'réseau (' + e.nbFentes + ' fentes)' : e.nbFentes + ' fente' + (e.nbFentes > 1 ? 's' : ''));
@@ -230,7 +260,11 @@ function majCarteExperience() {
     $('expDxMes').textContent = formatLongueurM(dxMes);
     const ecart = Math.abs(dxMes - ex.dxReel) / ex.dxReel;
     $('expEcart').textContent = (ecart * 100).toFixed(1) + ' %';
-    if (ecart <= 0.08) {
+    if (P.mode === 'ballistique') {
+      $('expVerdict').className = 'note att';
+      $('expVerdict').textContent = 'Témoin balistique pur : écart de ' + (ecart * 100).toFixed(0) +
+        ' % avec la théorie — l\u2019interfrange documenté n\u2019est PAS reproduit sans phase interne (enveloppe de diffraction seule). C\u2019est le résultat attendu du témoin : l\u2019écart mesure ce que la phase apporte.';
+    } else if (ecart <= 0.08) {
       $('expVerdict').className = 'note ok';
       $('expVerdict').textContent = '✓ Compatible : le modèle hélicoïdal à phase interne reproduit l\u2019interfrange prédit (écart ≤ 8 %).';
     } else {
@@ -239,6 +273,11 @@ function majCarteExperience() {
         ' % avec la théorie — accumulez davantage d\u2019impacts' +
         (ex.modifie ? ' ou revenez aux paramètres injectés (rejouez l\u2019expérience)' : '') + '.';
     }
+  } else if (P.mode === 'ballistique' && ETAT.compteur.detectees >= 300) {
+    $('expDxMes').textContent = '— aucune frange';
+    $('expEcart').textContent = '—';
+    $('expVerdict').className = 'note att';
+    $('expVerdict').textContent = 'Témoin balistique pur : aucune périodicité détectable — sans phase interne, les franges ne se forment pas (enveloppe de diffraction seule). C\u2019est le résultat attendu du témoin.';
   } else {
     $('expDxMes').textContent = '— accumulation…';
     $('expEcart').textContent = '—';
@@ -276,7 +315,7 @@ function lireMesure(vid, uid) {
   const f = FACTEURS_UNITES[$(uid).value];
   return v * f;
 }
-function appliquerCustom() {
+function appliquerCustom(forcer) {
   const lambda = lireMesure('cLambda', 'uLambda');
   const a = lireMesure('cA', 'uA');
   const d = lireMesure('cD', 'uD');
@@ -287,15 +326,17 @@ function appliquerCustom() {
     return;
   }
   $('erreurCustom').textContent = '';
+  const type = $('cType').value;
   rejouerExperience({
-    id: 'custom', particule: 'Particule', massif: $('cType').value === 'massif',
+    id: 'custom', particule: 'Particule', massif: type === 'massif',
     titre: 'Données personnalisées', annee: new Date().getFullYear(),
     lambda: lambda, a: a, d: d, L: L, nbFentes: n,
+    signature: ['custom', lambda, a, d, L, n, type].join('|'),
     noteA: 'données saisies par l\u2019utilisateur',
     dxDocumente: undefined,
     sourceDx: 'Δx théorique = λL/d',
     notes: [], reference: 'paramètres fournis par l\u2019utilisateur', url: '',
-  });
+  }, forcer);
 }
 
 /* ---------- montage du panneau expériences ---------- */
@@ -328,7 +369,16 @@ function lierExperiences() {
     const exp = EXPERIENCES.find(e => e.id === id);
     if (exp) rejouerExperience(exp);
   });
-  $('btnCustomAppliquer').addEventListener('click', appliquerCustom);
+  // témoin balistique pur : MÊME expérience, MÊME graine canonique, mais
+  // mode balistique + mélange des deux sens de spin → le même flux de
+  // corpuscules se joue sans phase interne ; seule la détection diffère.
+  $('btnTemoin').addEventListener('click', () => {
+    const id = $('selExperience').value;
+    if (id === 'custom') { appliquerCustom({ mode: 'ballistique', spin: 0 }); return; }
+    const exp = EXPERIENCES.find(e => e.id === id);
+    if (exp) rejouerExperience(exp, { mode: 'ballistique', spin: 0 });
+  });
+  $('btnCustomAppliquer').addEventListener('click', () => appliquerCustom());
   $('btnQuitterExperience').addEventListener('click', () => {
     ETAT.experience = null;
     $('carteExperience').classList.add('cache');
@@ -350,7 +400,9 @@ function exporterCSV() {
   const lignes = [
     '# Simulation double fente de Young — corpuscules hélicoïdaux',
     '# date : ' + new Date().toISOString(),
-    '# parametres : mode=' + p.mode + ' ; type=' + p.type + ' ; lambda_mm=' + p.lambda +
+    '# parametres : mode=' + p.mode + ' ; type=' + p.type + ' ; spin=' +
+      (p.spin === 0 ? 'mixte(50/50)' : (p.spin > 0 ? '+1' : '-1')) +
+      ' ; graine=' + ETAT.graine + ' ; lambda_mm=' + p.lambda +
       ' ; a_mm=' + p.largeurFente + ' ; d_mm=' + p.ecartFentes + ' ; N_fentes=' + p.nbFentes +
       ' ; D_mm=' + p.distanceEcran + ' ; epsilon=' + p.epsilon + ' ; divergence=' + p.divergence +
       ' ; rayon_helice_mm=' + p.rayonHelice + ' ; collisions=' + p.collisions + ' ; r_collision_mm=' + p.rayonCollision,
@@ -413,6 +465,16 @@ function lierInterface() {
   bindCheck('cbTrainees', ETAT.affichage, 'trainees');
   bindCheck('cbEclats', ETAT.affichage, 'eclats');
   bindCheck('cbTheorie', ETAT.affichage, 'theorie');
+  bindCheck('cbCouleurSpin', ETAT.affichage, 'couleurSpin');
+
+  // — reproductibilité —
+  bindCheck('cbGraineCanonique', ETAT, 'graineCanonique');
+  const elGraine = $('iGraine');
+  elGraine.addEventListener('change', () => {
+    const v = parseInt(elGraine.value, 10);
+    ETAT.graine = (isNaN(v) ? 42 : v) >>> 0;
+    elGraine.value = String(ETAT.graine);
+  });
 
   $('btnPause').addEventListener('click', () => {
     ETAT.enPause = !ETAT.enPause;

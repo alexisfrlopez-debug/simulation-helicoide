@@ -81,6 +81,8 @@
       </select></div>
     <div id="infoExperience" class="note">Choisir une expérience publiée charge ses données réelles (λ, fentes, distance) et construit une maquette jouable&nbsp;; pendant la lecture, la carte ci-dessous compare l'interfrange mesuré, la théorie λL/d et la valeur documentée.</div>
     <button id="btnRejouer" class="principal" style="width:100%;margin-top:2px">Rejouer cette expérience</button>
+    <button id="btnTemoin" style="width:100%">Témoin balistique pur (les deux spins)</button>
+    <div class="note">Le rejeu <b>préserve vos réglages</b> de mode et de sens du spin&nbsp;: réglez-les avant de rejouer, ou utilisez le bouton <i>Témoin balistique pur</i>, qui rejoue la MÊME expérience (même graine canonique) en mode balistique pur avec le mélange des deux sens de spin — le même flux de corpuscules se joue sans phase interne, seule la détection diffère.</div>
 
     <div id="champsCustom" class="cache">
       <div class="ligne"><label for="cLambda">λ (longueur d'onde)</label><input type="text" id="cLambda" value="633"><select class="unite" id="uLambda"></select></div>
@@ -101,6 +103,7 @@
         <div class="l"><span>Δx mesuré (sim, <span id="expImpacts">0</span> impacts)</span><b id="expDxMes"></b></div>
         <div class="l"><span>Δx documenté</span><b id="expDxDoc"></b></div>
         <div class="l"><span>écart sim / théorie</span><b id="expEcart"></b></div>
+        <div class="l"><span>rejeu : graine · mode · spin</span><b id="expGraine"></b></div>
       </div>
       <div id="expVerdict" class="note"></div>
       <div id="expDonnees" class="note"></div>
@@ -108,6 +111,12 @@
       <button id="btnQuitterExperience" style="width:100%">Quitter le mode expérience</button>
     </div>
     <div class="note">La scène 3D est une maquette à l'échelle de la fenêtre du détecteur (nombre de franges, enveloppe a/d et nombre de fentes conservés)&nbsp;; l'histogramme et Δx sont convertis en unités réelles (m) par l'étalon σ calibré sur le moteur exact.</div>
+  </details>
+  <details open>
+    <summary>Reproductibilité — rejeu à l'identique</summary>
+    <div class="ligne"><label for="iGraine">Graine du générateur</label><input type="text" id="iGraine" value="42"></div>
+    <div class="ligne"><label for="cbGraineCanonique">Graine canonique au rejeu</label><input type="checkbox" id="cbGraineCanonique" checked></div>
+    <div class="note">Générateur pseudo-aléatoire <b>déterministe</b> (mulberry32) + pas de temps <b>fixe</b> (60 Hz, indépendant de la cadence d'affichage)&nbsp;: «&nbsp;Purger&nbsp;» remet le flux à la graine ci-contre — à configuration inchangée, la séquence d'impacts se rejoue <b>à l'identique</b>, particule après particule.<br>Chaque expérience documentée possède sa <b>graine canonique</b> (hachage de son identifiant, affichée dans la carte)&nbsp;: le rejeu est identique d'une session ou d'une machine à l'autre — navigateur et banc de mesure headless compris. Décochez la case pour imposer votre graine (étude de robustesse&nbsp;: relancer avec plusieurs graines et vérifier la stabilité de l'interfrange).</div>
   </details>
   <details open>
     <summary>Mode &amp; particules</summary>
@@ -122,8 +131,8 @@
         <option value="massif">Massive — déviée par les arêtes</option>
       </select></div>
     <div class="ligne"><label for="selSpin">Sens du spin</label>
-      <select id="selSpin"><option value="1" selected>horaire (droite)</option><option value="-1">anti-horaire (gauche)</option></select></div>
-    <div class="note">Photon&nbsp;: absorption en frappant le mur. Particule massive&nbsp;: diffusion élastique sur l'arête (halo autour des taches).</div>
+      <select id="selSpin"><option value="1" selected>horaire (droite)</option><option value="-1">anti-horaire (gauche)</option><option value="0">les deux — mélange 50/50</option></select></div>
+    <div class="note">Photon&nbsp;: absorption en frappant le mur. Particule massive&nbsp;: diffusion élastique sur l'arête (halo autour des taches).<br>Le sens du spin est propre à CHAQUE corpuscule&nbsp;: «&nbsp;les deux&nbsp;» émet un mélange 50/50 horaire/anti-horaire (repérable avec «&nbsp;Colorer selon le sens du spin&nbsp;» dans Affichage).</div>
   </details>
   <details open>
     <summary>Source &amp; fentes</summary>
@@ -175,6 +184,7 @@
     <div class="ligne"><label for="cbTrainees">Traînées hélicoïdales</label><input type="checkbox" id="cbTrainees" checked></div>
     <div class="ligne"><label for="cbEclats">Éclats d'impact</label><input type="checkbox" id="cbEclats" checked></div>
     <div class="ligne"><label for="cbTheorie">Courbe théorique</label><input type="checkbox" id="cbTheorie" checked></div>
+    <div class="ligne"><label for="cbCouleurSpin">Colorer selon le sens du spin</label><input type="checkbox" id="cbCouleurSpin"></div>
   </details>
   <details>
     <summary>À propos du modèle</summary>
@@ -183,7 +193,7 @@
 
   <h2>Commandes</h2>
   <button id="btnPause" class="principal">Pause</button>
-  <button id="btnPurger">Purger l'histogramme</button>
+  <button id="btnPurger">Purger — rejeu identique</button>
   <button id="btnCsv">Exporter CSV</button>
   <button id="btnRecentrer">Recentrer</button>
   <div class="note">Vues&nbsp;: <button id="btnVueEnsemble">d'ensemble</button> <button id="btnVueFentes">près des fentes</button> <button id="btnVueEcran">face à l'écran</button></div>

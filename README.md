@@ -22,16 +22,38 @@ glisser = orbite, clic droit = translation.
 
 | Groupe | Paramètres |
 |---|---|
-| **Expériences documentées** | 4 expériences publiées jouables (photon He–Ne 2016, électron Bach 2013, C₆₀ Arndt 1999, neutron Zeilinger 1988) + données personnalisées ; carte de comparaison Δx mesuré / théorie λL/d / documenté |
-| Mode | hélicoïdal (interférences) / **balistique pur** (référence) |
-| Particule | photon (absorbé aux arêtes) / massive (déviée aux arêtes) ; sens du spin |
+| **Expériences documentées** | 4 expériences publiées jouables (photon He–Ne 2016, électron Bach 2013, C₆₀ Arndt 1999, neutron Zeilinger 1988) + données personnalisées ; carte de comparaison Δx mesuré / théorie λL/d / documenté ; **témoin balistique pur (les deux spins) en un clic** |
+| Mode | hélicoïdal (interférences) / **balistique pur** (référence) — le rejeu des expériences documentées fonctionne dans les DEUX modes |
+| Particule | photon (absorbé aux arêtes) / massive (déviée aux arêtes) ; sens du spin : horaire, anti-horaire ou **les deux — mélange 50/50** (sens propre à chaque corpuscule, compté et visualisable) |
+| **Reproductibilité** | **rejeu à l'identique** : générateur déterministe seedé (mulberry32), pas de temps fixe 60 Hz, graines canoniques par expérience, graine éditable (étude de robustesse) |
 | Source | débit, vitesse, ralenti, largeur du faisceau |
 | Fentes | nombre (1-8), largeur a, écart d, hauteur, distance écran D |
 | Hélice | λ physique, rayon r, pas et échelle visuels (rendu) |
 | Diffraction | loi sinc² / gaussienne / nulle |
 | Interactions | **collisions inter-corpuscules** (falsification) + rayon |
 | Redshift | ε (évolution d'amplitude), λ effectif, z effectif |
-| Mesures | export CSV, visibilité V, écart de frange théorique, compteurs |
+| Mesures | export CSV (graine + spin consignés), visibilité V, écart de frange théorique, compteurs par sens de spin |
+
+### Rejeu à l'identique & témoin balistique (v0.2)
+
+- **Déterminisme complet** : toutes les décisions stochastiques tirent de
+  générateurs seedés (mulberry32) et la boucle avance à **pas de temps fixe**
+  (60 Hz, indépendant de la cadence d'affichage) — « Purger » remet le flux
+  à la graine : la séquence d'impacts se rejoue à l'identique, particule
+  après particule, sur n'importe quelle machine (navigateur ≡ banc headless,
+  vérifié octet par octet).
+- **Graines canoniques** : chaque expérience documentée a une graine stable
+  (FNV-1a de son identifiant) — le rejeu est identique d'une session à
+  l'autre ; la graine est éditable pour les études de robustesse.
+- **Témoin balistique pur** : un bouton rejoue la même expérience (même
+  graine, même flux de corpuscules — flux géométrie/détection séparés) en
+  balistique pur avec le mélange des deux sens de spin : **aucune frange**
+  ne se forme (résultat attendu du contrôle falsifiable).
+- **Deux sens de spin** : émission en mélange 50/50, sens propre à chaque
+  corpuscule, comptes séparés, coloration optionnelle.
+- Validation headless : `node outils/test_rejeu_deterministe.js`
+  (identité des rejeus, même flux, témoin sans franges) et
+  `node scripts/test_experiences.js` (Δx mesuré vs λL/d, écart ≤ 8 %).
 
 ## Contenu du dépôt
 

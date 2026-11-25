@@ -12,6 +12,10 @@
      G(x) = |Σᵢ exp(i·2π·Φ(Lᵢ(x)))|² / N²  (gâteau de détection),
      où Lᵢ(x) = fenteᵢ → point x de l'écran : c'est l'hypothèse
      phénoménologique centrale (cf. docs/modele_physique.md).
+   - DÉTERMINISME : toutes les décisions stochastiques tirent d'un
+     générateur seedé (mulberry32, graine ETAT.graine) et le pas de
+     temps est FIXE (60 Hz) → à paramètres et graine donnés, « purger »
+     puis relancer rejoue la même séquence d'impacts à l'identique.
    ============================================================ */
 
 const CFG = {
@@ -32,14 +36,14 @@ const ETAT = {
   params: {
     mode: 'helicoide',       // 'helicoide' | 'ballistique'
     type: 'photon',          // 'photon' | 'massif'
-    spin: 1,                // +1 horaire / -1 anti-horaire
+    spin: 1,                // +1 horaire / -1 anti-horaire / 0 mélange 50/50
     debit: 80,               // particules /s
     v: 140,                  // mm/s
     ralenti: 1,
     faisceau: 10,            // largeur du faisceau (mm)
     nbFentes: 2,
     largeurFente: 1.6,       // a (mm)
-    ecartFentes: 4,         // d (mm)
+    ecartFentes: 4,          // d (mm)
     hauteurFente: 60,        // (mm)
     distanceEcran: 800,      // D (mm)
     lambda: 0.15,            // λ physique (mm)
@@ -52,17 +56,21 @@ const ETAT = {
     rayonCollision: 0.5,     // mm
     epsilon: 0,              // évolution d'amplitude ε / 1000 mm
   },
-  affichage: { trainees: true, eclats: true, theorie: true },
+  affichage: { trainees: true, eclats: true, theorie: true, couleurSpin: false },
   particules: [],
   histogramme: new Float64Array(CFG.NB_BINS),
-  compteur: { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0 },
+  compteur: { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0,
+              emisPlus: 0, emisMoins: 0, detectPlus: 0, detectMoins: 0 },
   evenements: [],
   tSim: 0,
   enPause: false,
   configSale: false,
   accEmission: 0,
+  accTemps: 0,             // accumulateur du pas de temps fixe (rendu)
   histogrammeSale: true,
-  experience: null,          // expérience documentée active (cf. EXPERIENCES)
+  experience: null,         // expérience documentée active (cf. EXPERIENCES)
+  graine: 42,               // graine du générateur déterministe
+  graineCanonique: true,   // rejeu : utiliser la graine canonique de l'expérience
 };
 
 const P = ETAT.params;
@@ -74,10 +82,49 @@ function centresFentes() {
   return c;
 }
 function sinc(t) { return (t === 0) ? 1 : Math.sin(t) / t; }
+
+/* ---------- générateurs déterministes (mulberry32) ----------
+   Deux flux indépendants, tous deux seedés par ETAT.graine :
+   - alea()          : émission, phase initiale, sens du spin, divergence
+                       post-fente, diffusion sur l'arête (la GÉOMÉTRIE) ;
+   - aleaDetection() : rejet du gâteau G(x) (la LOI de détection).
+   Séparer les flux garantit que le rejeu hélicoïdal et son TÉMOIN
+   BALISTIQUE PUR (même expérience, même graine) partagent exactement le
+   même flux de corpuscules — mêmes émissions, mêmes franchissements de
+   fente, mêmes absorptions — seule la loi de détection diffère.
+   « Purger » réinitialise les deux flux : à paramètres et graine
+   inchangés, la séquence d'impacts — particule après particule — est
+   rigoureusement identique d'un rejeu à l'autre (navigateur comme banc
+   headless : même noyau, même graine, même pas de temps fixe). */
+function creerMulberry32(graine) {
+  let a = graine >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let alea = creerMulberry32(42);
+let aleaDetection = creerMulberry32((Math.imul(42, 0x9E3779B1) ^ 0x6D2B79F5) >>> 0);
+function reinitialiserAlea() {
+  alea = creerMulberry32(ETAT.graine >>> 0);
+  aleaDetection = creerMulberry32((Math.imul(ETAT.graine >>> 0, 0x9E3779B1) ^ 0x6D2B79F5) >>> 0);
+}
+
+/* graine canonique stable d'une expérience (FNV-1a de son identifiant) :
+   deux sessions différentes rejouent la même expérience avec la même
+   graine → rejeu identique d'une machine à l'autre. */
+function graineExperience(chaine) {
+  let h = 2166136261;
+  for (let i = 0; i < chaine.length; i++) { h ^= chaine.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
 function gaussienne(sigma) {
   let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while (u === 0) u = alea();
+  while (v === 0) v = alea();
   return sigma * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
@@ -123,9 +170,10 @@ function enveloppeAnalytique(x) {
   }
   return s;
 }
-function courbeTheorique(x) {
-  const e = enveloppeAnalytique(x);
-  if (P.mode === 'ballistique') return e;
+function courbeTheorique(x, mode) {
+  const m = mode || P.mode;      // mode explicite : l'étalonnage σ se fait
+  const e = enveloppeAnalytique(x);   // toujours sur le motif AVEC franges
+  if (m === 'ballistique') return e;  // (même si la session est balistique)
   return e * facteurInterference(x);
 }
 
@@ -137,25 +185,37 @@ function tirageDivergence() {
   } else if (P.divergence === 'sinc2') {
     const th0 = P.lambda / P.largeurFente; // premier zéro (petits angles)
     for (let k = 0; k < 300; k++) {
-      const t = (Math.random() * 4 - 2) * th0;
-      if (Math.random() <= sinc(Math.PI * P.largeurFente * t / P.lambda) ** 2) { thx = t; break; }
+      const t = (alea() * 4 - 2) * th0;
+      if (alea() <= sinc(Math.PI * P.largeurFente * t / P.lambda) ** 2) { thx = t; break; }
     }
   }
   const thy = gaussienne(0.004); // divergence verticale faible, fixe
   return { thx: thx, thy: thy };
 }
 
-/* ---------- émission ---------- */
+/* ---------- émission ----------
+   Le sens du spin est propre à CHAQUE corpuscule : P.spin = ±1 impose
+   un sens unique ; P.spin = 0 émet un mélange 50/50 des deux sens.
+   Le tirage est TOUJOURS consommé dans le flux géométrique (même en
+   sens imposé, où il est ignoré) : le flux de corpuscules — axes,
+   phases, franchissements — est ainsi IDENTIQUE quel que soit le réglage
+   du spin, et le rejeu hélicoïdal partage exactement le même flux que
+   son témoin balistique pur (la détection tire d'un flux séparé). */
 function emettre() {
+  const tir = alea();
+  let spin = (P.spin === 0) ? (tir < 0.5 ? -1 : 1) : P.spin;
+  if (spin !== 1 && spin !== -1) spin = 1;   // garde-fou
   ETAT.particules.push({
     z: CFG.Z_SOURCE, vz: P.v, vx: 0, vy: 0,
-    xAxe: (Math.random() - 0.5) * P.faisceau,
-    yAxe: (Math.random() - 0.5) * P.hauteurFente * 0.9,
-    phi: Math.random() * 2 * Math.PI,
-    phiVis: Math.random() * 2 * Math.PI,
+    xAxe: (alea() - 0.5) * P.faisceau,
+    yAxe: (alea() - 0.5) * P.hauteurFente * 0.9,
+    phi: alea() * 2 * Math.PI,
+    phiVis: alea() * 2 * Math.PI,
+    spin: spin,
     s: 0, passe: false, fente: -1, diffuse: false, mort: false,
   });
   ETAT.compteur.emises++;
+  if (spin > 0) ETAT.compteur.emisPlus++; else ETAT.compteur.emisMoins++;
 }
 
 /* ---------- franchissement du mur (z = 0) ----------
@@ -180,16 +240,18 @@ function franchirMur(pp) {
   } else {
     pp.diffuse = true;
     ETAT.compteur.diffusees++;
-    pp.vx += (Math.random() - 0.5) * 0.2 * P.v;
-    pp.vy += (Math.random() - 0.5) * 0.1 * P.v;
+    pp.vx += (alea() - 0.5) * 0.2 * P.v;
+    pp.vy += (alea() - 0.5) * 0.1 * P.v;
     pp.vz *= 0.9;
     ETAT.evenements.push({ type: 'diffusion', x: xr, y: yr, z: CFG.EPAISSEUR_MUR / 2 });
   }
 }
 
 /* ---------- atterrissage sur l'écran ---------- */
-function compterImpact(x, y) {
+function compterImpact(x, y, spin) {
   ETAT.compteur.detectees++;
+  if (spin === 1) ETAT.compteur.detectPlus++;
+  else if (spin === -1) ETAT.compteur.detectMoins++;
   const b = Math.floor((x - CFG.X_MIN) / (CFG.X_MAX - CFG.X_MIN) * CFG.NB_BINS);
   if (b >= 0 && b < CFG.NB_BINS) ETAT.histogramme[b] += 1;
   ETAT.histogrammeSale = true;
@@ -198,9 +260,9 @@ function compterImpact(x, y) {
 function atterrir(pp) {
   const xr = pp.xAxe + P.rayonHelice * Math.cos(pp.phi);
   const yr = pp.yAxe + P.rayonHelice * Math.sin(pp.phi);
-  if (P.mode === 'ballistique') { compterImpact(xr, yr); return; }
+  if (P.mode === 'ballistique') { compterImpact(xr, yr, pp.spin); return; }
   const g = facteurInterference(xr);
-  if (Math.random() <= g) compterImpact(xr, yr);
+  if (aleaDetection() <= g) compterImpact(xr, yr, pp.spin);
   else {
     ETAT.compteur.indetectees++;
     ETAT.evenements.push({ type: 'ejecte', x: xr, y: yr, z: P.distanceEcran - 1 });
@@ -211,8 +273,8 @@ function atterrir(pp) {
 function pasParticule(pp, dt) {
   const dz = pp.vz * dt;
   pp.s += dz; pp.z += dz;
-  pp.phi += P.spin * 2 * Math.PI * dz / P.lambda;
-  pp.phiVis += P.spin * 2 * Math.PI * dz / Math.max(P.lambdaVis, 0.05);
+  pp.phi += pp.spin * 2 * Math.PI * dz / P.lambda;
+  pp.phiVis += pp.spin * 2 * Math.PI * dz / Math.max(P.lambdaVis, 0.05);
   if (!pp.passe && pp.z >= 0) { pp.passe = true; franchirMur(pp); }
   pp.xAxe += pp.vx * dt; pp.yAxe += pp.vy * dt;
   if (!pp.mort && pp.z >= P.distanceEcran) { atterrir(pp); pp.mort = true; }
@@ -303,10 +365,20 @@ function visibiliteMesuree() {
   return (mx - mn) / (mx + mn);
 }
 
-/* ---------- purge ---------- */
+/* ---------- purge : remise à zéro STOCHASTIQUE COMPLÈTE ----------
+   Purge l'histogramme ET les compteurs, vide le vol, remet à zéro les
+   accumulateurs et RÉINITIALISE le générateur à ETAT.graine : relancer
+   ensuite rejoue la séquence d'impacts à l'identique (même configuration,
+   même graine). */
 function purger() {
   ETAT.histogramme.fill(0);
-  ETAT.compteur = { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0 };
+  ETAT.particules.length = 0;
+  ETAT.accEmission = 0;
+  ETAT.accTemps = 0;
+  ETAT.tSim = 0;
+  ETAT.compteur = { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0,
+                    emisPlus: 0, emisMoins: 0, detectPlus: 0, detectMoins: 0 };
+  reinitialiserAlea();
   ETAT.configSale = false;
   ETAT.histogrammeSale = true;
 }
@@ -482,7 +554,9 @@ function mapperExperience(exp) {
   const faisceau = Math.round(Math.max(6, Math.min(30, (n - 1) * ds + 2 * as + 3)) / 0.5) * 0.5;
   return {
     patch: {
-      mode: 'helicoide',
+      /* mode & spin NON fixés ici : le rejeu préserve les réglages de
+         l'utilisateur (hélicoïdal par défaut ; balistique pur, spin mixte,
+         etc. — cf. bouton « Témoin balistique pur » de l'interface). */
       type: exp.massif ? 'massif' : 'photon',
       nbFentes: n,
       largeurFente: as,
@@ -509,7 +583,7 @@ function calibrerSigma(dxReel) {
   const comptes = new Float64Array(nb);
   for (let i = 0; i < nb; i++) {
     const x = CFG.X_MIN + (i + 0.5) * pas;
-    comptes[i] = courbeTheorique(x) * 10000;
+    comptes[i] = courbeTheorique(x, 'helicoide') * 10000;
   }
   const dxExact = estimerInterfrange(comptes, CFG.X_MAX - CFG.X_MIN);
   return dxExact !== null && dxExact > 1e-6 ? dxReel / dxExact : null;

@@ -81,6 +81,8 @@
       </select></div>
     <div id="infoExperience" class="note">Choisir une expérience publiée charge ses données réelles (λ, fentes, distance) et construit une maquette jouable&nbsp;; pendant la lecture, la carte ci-dessous compare l'interfrange mesuré, la théorie λL/d et la valeur documentée.</div>
     <button id="btnRejouer" class="principal" style="width:100%;margin-top:2px">Rejouer cette expérience</button>
+    <button id="btnTemoin" style="width:100%">Témoin balistique pur (les deux spins)</button>
+    <div class="note">Le rejeu <b>préserve vos réglages</b> de mode et de sens du spin&nbsp;: réglez-les avant de rejouer, ou utilisez le bouton <i>Témoin balistique pur</i>, qui rejoue la MÊME expérience (même graine canonique) en mode balistique pur avec le mélange des deux sens de spin — le même flux de corpuscules se joue sans phase interne, seule la détection diffère.</div>
 
     <div id="champsCustom" class="cache">
       <div class="ligne"><label for="cLambda">λ (longueur d'onde)</label><input type="text" id="cLambda" value="633"><select class="unite" id="uLambda"></select></div>
@@ -101,6 +103,7 @@
         <div class="l"><span>Δx mesuré (sim, <span id="expImpacts">0</span> impacts)</span><b id="expDxMes"></b></div>
         <div class="l"><span>Δx documenté</span><b id="expDxDoc"></b></div>
         <div class="l"><span>écart sim / théorie</span><b id="expEcart"></b></div>
+        <div class="l"><span>rejeu : graine · mode · spin</span><b id="expGraine"></b></div>
       </div>
       <div id="expVerdict" class="note"></div>
       <div id="expDonnees" class="note"></div>
@@ -108,6 +111,12 @@
       <button id="btnQuitterExperience" style="width:100%">Quitter le mode expérience</button>
     </div>
     <div class="note">La scène 3D est une maquette à l'échelle de la fenêtre du détecteur (nombre de franges, enveloppe a/d et nombre de fentes conservés)&nbsp;; l'histogramme et Δx sont convertis en unités réelles (m) par l'étalon σ calibré sur le moteur exact.</div>
+  </details>
+  <details open>
+    <summary>Reproductibilité — rejeu à l'identique</summary>
+    <div class="ligne"><label for="iGraine">Graine du générateur</label><input type="text" id="iGraine" value="42"></div>
+    <div class="ligne"><label for="cbGraineCanonique">Graine canonique au rejeu</label><input type="checkbox" id="cbGraineCanonique" checked></div>
+    <div class="note">Générateur pseudo-aléatoire <b>déterministe</b> (mulberry32) + pas de temps <b>fixe</b> (60 Hz, indépendant de la cadence d'affichage)&nbsp;: «&nbsp;Purger&nbsp;» remet le flux à la graine ci-contre — à configuration inchangée, la séquence d'impacts se rejoue <b>à l'identique</b>, particule après particule.<br>Chaque expérience documentée possède sa <b>graine canonique</b> (hachage de son identifiant, affichée dans la carte)&nbsp;: le rejeu est identique d'une session ou d'une machine à l'autre — navigateur et banc de mesure headless compris. Décochez la case pour imposer votre graine (étude de robustesse&nbsp;: relancer avec plusieurs graines et vérifier la stabilité de l'interfrange).</div>
   </details>
   <details open>
     <summary>Mode &amp; particules</summary>
@@ -122,8 +131,8 @@
         <option value="massif">Massive — déviée par les arêtes</option>
       </select></div>
     <div class="ligne"><label for="selSpin">Sens du spin</label>
-      <select id="selSpin"><option value="1" selected>horaire (droite)</option><option value="-1">anti-horaire (gauche)</option></select></div>
-    <div class="note">Photon&nbsp;: absorption en frappant le mur. Particule massive&nbsp;: diffusion élastique sur l'arête (halo autour des taches).</div>
+      <select id="selSpin"><option value="1" selected>horaire (droite)</option><option value="-1">anti-horaire (gauche)</option><option value="0">les deux — mélange 50/50</option></select></div>
+    <div class="note">Photon&nbsp;: absorption en frappant le mur. Particule massive&nbsp;: diffusion élastique sur l'arête (halo autour des taches).<br>Le sens du spin est propre à CHAQUE corpuscule&nbsp;: «&nbsp;les deux&nbsp;» émet un mélange 50/50 horaire/anti-horaire (repérable avec «&nbsp;Colorer selon le sens du spin&nbsp;» dans Affichage).</div>
   </details>
   <details open>
     <summary>Source &amp; fentes</summary>
@@ -175,6 +184,7 @@
     <div class="ligne"><label for="cbTrainees">Traînées hélicoïdales</label><input type="checkbox" id="cbTrainees" checked></div>
     <div class="ligne"><label for="cbEclats">Éclats d'impact</label><input type="checkbox" id="cbEclats" checked></div>
     <div class="ligne"><label for="cbTheorie">Courbe théorique</label><input type="checkbox" id="cbTheorie" checked></div>
+    <div class="ligne"><label for="cbCouleurSpin">Colorer selon le sens du spin</label><input type="checkbox" id="cbCouleurSpin"></div>
   </details>
   <details>
     <summary>À propos du modèle</summary>
@@ -183,7 +193,7 @@
 
   <h2>Commandes</h2>
   <button id="btnPause" class="principal">Pause</button>
-  <button id="btnPurger">Purger l'histogramme</button>
+  <button id="btnPurger">Purger — rejeu identique</button>
   <button id="btnCsv">Exporter CSV</button>
   <button id="btnRecentrer">Recentrer</button>
   <div class="note">Vues&nbsp;: <button id="btnVueEnsemble">d'ensemble</button> <button id="btnVueFentes">près des fentes</button> <button id="btnVueEcran">face à l'écran</button></div>
@@ -1268,6 +1278,10 @@
      G(x) = |Σᵢ exp(i·2π·Φ(Lᵢ(x)))|² / N²  (gâteau de détection),
      où Lᵢ(x) = fenteᵢ → point x de l'écran : c'est l'hypothèse
      phénoménologique centrale (cf. docs/modele_physique.md).
+   - DÉTERMINISME : toutes les décisions stochastiques tirent d'un
+     générateur seedé (mulberry32, graine ETAT.graine) et le pas de
+     temps est FIXE (60 Hz) → à paramètres et graine donnés, « purger »
+     puis relancer rejoue la même séquence d'impacts à l'identique.
    ============================================================ */
 
 const CFG = {
@@ -1288,14 +1302,14 @@ const ETAT = {
   params: {
     mode: 'helicoide',       // 'helicoide' | 'ballistique'
     type: 'photon',          // 'photon' | 'massif'
-    spin: 1,                // +1 horaire / -1 anti-horaire
+    spin: 1,                // +1 horaire / -1 anti-horaire / 0 mélange 50/50
     debit: 80,               // particules /s
     v: 140,                  // mm/s
     ralenti: 1,
     faisceau: 10,            // largeur du faisceau (mm)
     nbFentes: 2,
     largeurFente: 1.6,       // a (mm)
-    ecartFentes: 4,         // d (mm)
+    ecartFentes: 4,          // d (mm)
     hauteurFente: 60,        // (mm)
     distanceEcran: 800,      // D (mm)
     lambda: 0.15,            // λ physique (mm)
@@ -1308,17 +1322,21 @@ const ETAT = {
     rayonCollision: 0.5,     // mm
     epsilon: 0,              // évolution d'amplitude ε / 1000 mm
   },
-  affichage: { trainees: true, eclats: true, theorie: true },
+  affichage: { trainees: true, eclats: true, theorie: true, couleurSpin: false },
   particules: [],
   histogramme: new Float64Array(CFG.NB_BINS),
-  compteur: { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0 },
+  compteur: { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0,
+              emisPlus: 0, emisMoins: 0, detectPlus: 0, detectMoins: 0 },
   evenements: [],
   tSim: 0,
   enPause: false,
   configSale: false,
   accEmission: 0,
+  accTemps: 0,             // accumulateur du pas de temps fixe (rendu)
   histogrammeSale: true,
-  experience: null,          // expérience documentée active (cf. EXPERIENCES)
+  experience: null,         // expérience documentée active (cf. EXPERIENCES)
+  graine: 42,               // graine du générateur déterministe
+  graineCanonique: true,   // rejeu : utiliser la graine canonique de l'expérience
 };
 
 const P = ETAT.params;
@@ -1330,10 +1348,49 @@ function centresFentes() {
   return c;
 }
 function sinc(t) { return (t === 0) ? 1 : Math.sin(t) / t; }
+
+/* ---------- générateurs déterministes (mulberry32) ----------
+   Deux flux indépendants, tous deux seedés par ETAT.graine :
+   - alea()          : émission, phase initiale, sens du spin, divergence
+                       post-fente, diffusion sur l'arête (la GÉOMÉTRIE) ;
+   - aleaDetection() : rejet du gâteau G(x) (la LOI de détection).
+   Séparer les flux garantit que le rejeu hélicoïdal et son TÉMOIN
+   BALISTIQUE PUR (même expérience, même graine) partagent exactement le
+   même flux de corpuscules — mêmes émissions, mêmes franchissements de
+   fente, mêmes absorptions — seule la loi de détection diffère.
+   « Purger » réinitialise les deux flux : à paramètres et graine
+   inchangés, la séquence d'impacts — particule après particule — est
+   rigoureusement identique d'un rejeu à l'autre (navigateur comme banc
+   headless : même noyau, même graine, même pas de temps fixe). */
+function creerMulberry32(graine) {
+  let a = graine >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let alea = creerMulberry32(42);
+let aleaDetection = creerMulberry32((Math.imul(42, 0x9E3779B1) ^ 0x6D2B79F5) >>> 0);
+function reinitialiserAlea() {
+  alea = creerMulberry32(ETAT.graine >>> 0);
+  aleaDetection = creerMulberry32((Math.imul(ETAT.graine >>> 0, 0x9E3779B1) ^ 0x6D2B79F5) >>> 0);
+}
+
+/* graine canonique stable d'une expérience (FNV-1a de son identifiant) :
+   deux sessions différentes rejouent la même expérience avec la même
+   graine → rejeu identique d'une machine à l'autre. */
+function graineExperience(chaine) {
+  let h = 2166136261;
+  for (let i = 0; i < chaine.length; i++) { h ^= chaine.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
 function gaussienne(sigma) {
   let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while (u === 0) u = alea();
+  while (v === 0) v = alea();
   return sigma * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
@@ -1379,9 +1436,10 @@ function enveloppeAnalytique(x) {
   }
   return s;
 }
-function courbeTheorique(x) {
-  const e = enveloppeAnalytique(x);
-  if (P.mode === 'ballistique') return e;
+function courbeTheorique(x, mode) {
+  const m = mode || P.mode;      // mode explicite : l'étalonnage σ se fait
+  const e = enveloppeAnalytique(x);   // toujours sur le motif AVEC franges
+  if (m === 'ballistique') return e;  // (même si la session est balistique)
   return e * facteurInterference(x);
 }
 
@@ -1393,25 +1451,37 @@ function tirageDivergence() {
   } else if (P.divergence === 'sinc2') {
     const th0 = P.lambda / P.largeurFente; // premier zéro (petits angles)
     for (let k = 0; k < 300; k++) {
-      const t = (Math.random() * 4 - 2) * th0;
-      if (Math.random() <= sinc(Math.PI * P.largeurFente * t / P.lambda) ** 2) { thx = t; break; }
+      const t = (alea() * 4 - 2) * th0;
+      if (alea() <= sinc(Math.PI * P.largeurFente * t / P.lambda) ** 2) { thx = t; break; }
     }
   }
   const thy = gaussienne(0.004); // divergence verticale faible, fixe
   return { thx: thx, thy: thy };
 }
 
-/* ---------- émission ---------- */
+/* ---------- émission ----------
+   Le sens du spin est propre à CHAQUE corpuscule : P.spin = ±1 impose
+   un sens unique ; P.spin = 0 émet un mélange 50/50 des deux sens.
+   Le tirage est TOUJOURS consommé dans le flux géométrique (même en
+   sens imposé, où il est ignoré) : le flux de corpuscules — axes,
+   phases, franchissements — est ainsi IDENTIQUE quel que soit le réglage
+   du spin, et le rejeu hélicoïdal partage exactement le même flux que
+   son témoin balistique pur (la détection tire d'un flux séparé). */
 function emettre() {
+  const tir = alea();
+  let spin = (P.spin === 0) ? (tir < 0.5 ? -1 : 1) : P.spin;
+  if (spin !== 1 && spin !== -1) spin = 1;   // garde-fou
   ETAT.particules.push({
     z: CFG.Z_SOURCE, vz: P.v, vx: 0, vy: 0,
-    xAxe: (Math.random() - 0.5) * P.faisceau,
-    yAxe: (Math.random() - 0.5) * P.hauteurFente * 0.9,
-    phi: Math.random() * 2 * Math.PI,
-    phiVis: Math.random() * 2 * Math.PI,
+    xAxe: (alea() - 0.5) * P.faisceau,
+    yAxe: (alea() - 0.5) * P.hauteurFente * 0.9,
+    phi: alea() * 2 * Math.PI,
+    phiVis: alea() * 2 * Math.PI,
+    spin: spin,
     s: 0, passe: false, fente: -1, diffuse: false, mort: false,
   });
   ETAT.compteur.emises++;
+  if (spin > 0) ETAT.compteur.emisPlus++; else ETAT.compteur.emisMoins++;
 }
 
 /* ---------- franchissement du mur (z = 0) ----------
@@ -1436,16 +1506,18 @@ function franchirMur(pp) {
   } else {
     pp.diffuse = true;
     ETAT.compteur.diffusees++;
-    pp.vx += (Math.random() - 0.5) * 0.2 * P.v;
-    pp.vy += (Math.random() - 0.5) * 0.1 * P.v;
+    pp.vx += (alea() - 0.5) * 0.2 * P.v;
+    pp.vy += (alea() - 0.5) * 0.1 * P.v;
     pp.vz *= 0.9;
     ETAT.evenements.push({ type: 'diffusion', x: xr, y: yr, z: CFG.EPAISSEUR_MUR / 2 });
   }
 }
 
 /* ---------- atterrissage sur l'écran ---------- */
-function compterImpact(x, y) {
+function compterImpact(x, y, spin) {
   ETAT.compteur.detectees++;
+  if (spin === 1) ETAT.compteur.detectPlus++;
+  else if (spin === -1) ETAT.compteur.detectMoins++;
   const b = Math.floor((x - CFG.X_MIN) / (CFG.X_MAX - CFG.X_MIN) * CFG.NB_BINS);
   if (b >= 0 && b < CFG.NB_BINS) ETAT.histogramme[b] += 1;
   ETAT.histogrammeSale = true;
@@ -1454,9 +1526,9 @@ function compterImpact(x, y) {
 function atterrir(pp) {
   const xr = pp.xAxe + P.rayonHelice * Math.cos(pp.phi);
   const yr = pp.yAxe + P.rayonHelice * Math.sin(pp.phi);
-  if (P.mode === 'ballistique') { compterImpact(xr, yr); return; }
+  if (P.mode === 'ballistique') { compterImpact(xr, yr, pp.spin); return; }
   const g = facteurInterference(xr);
-  if (Math.random() <= g) compterImpact(xr, yr);
+  if (aleaDetection() <= g) compterImpact(xr, yr, pp.spin);
   else {
     ETAT.compteur.indetectees++;
     ETAT.evenements.push({ type: 'ejecte', x: xr, y: yr, z: P.distanceEcran - 1 });
@@ -1467,8 +1539,8 @@ function atterrir(pp) {
 function pasParticule(pp, dt) {
   const dz = pp.vz * dt;
   pp.s += dz; pp.z += dz;
-  pp.phi += P.spin * 2 * Math.PI * dz / P.lambda;
-  pp.phiVis += P.spin * 2 * Math.PI * dz / Math.max(P.lambdaVis, 0.05);
+  pp.phi += pp.spin * 2 * Math.PI * dz / P.lambda;
+  pp.phiVis += pp.spin * 2 * Math.PI * dz / Math.max(P.lambdaVis, 0.05);
   if (!pp.passe && pp.z >= 0) { pp.passe = true; franchirMur(pp); }
   pp.xAxe += pp.vx * dt; pp.yAxe += pp.vy * dt;
   if (!pp.mort && pp.z >= P.distanceEcran) { atterrir(pp); pp.mort = true; }
@@ -1559,10 +1631,20 @@ function visibiliteMesuree() {
   return (mx - mn) / (mx + mn);
 }
 
-/* ---------- purge ---------- */
+/* ---------- purge : remise à zéro STOCHASTIQUE COMPLÈTE ----------
+   Purge l'histogramme ET les compteurs, vide le vol, remet à zéro les
+   accumulateurs et RÉINITIALISE le générateur à ETAT.graine : relancer
+   ensuite rejoue la séquence d'impacts à l'identique (même configuration,
+   même graine). */
 function purger() {
   ETAT.histogramme.fill(0);
-  ETAT.compteur = { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0 };
+  ETAT.particules.length = 0;
+  ETAT.accEmission = 0;
+  ETAT.accTemps = 0;
+  ETAT.tSim = 0;
+  ETAT.compteur = { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0,
+                    emisPlus: 0, emisMoins: 0, detectPlus: 0, detectMoins: 0 };
+  reinitialiserAlea();
   ETAT.configSale = false;
   ETAT.histogrammeSale = true;
 }
@@ -1738,7 +1820,9 @@ function mapperExperience(exp) {
   const faisceau = Math.round(Math.max(6, Math.min(30, (n - 1) * ds + 2 * as + 3)) / 0.5) * 0.5;
   return {
     patch: {
-      mode: 'helicoide',
+      /* mode & spin NON fixés ici : le rejeu préserve les réglages de
+         l'utilisateur (hélicoïdal par défaut ; balistique pur, spin mixte,
+         etc. — cf. bouton « Témoin balistique pur » de l'interface). */
       type: exp.massif ? 'massif' : 'photon',
       nbFentes: n,
       largeurFente: as,
@@ -1765,7 +1849,7 @@ function calibrerSigma(dxReel) {
   const comptes = new Float64Array(nb);
   for (let i = 0; i < nb; i++) {
     const x = CFG.X_MIN + (i + 0.5) * pas;
-    comptes[i] = courbeTheorique(x) * 10000;
+    comptes[i] = courbeTheorique(x, 'helicoide') * 10000;
   }
   const dxExact = estimerInterfrange(comptes, CFG.X_MAX - CFG.X_MIN);
   return dxExact !== null && dxExact > 1e-6 ? dxReel / dxExact : null;
@@ -1941,7 +2025,15 @@ function majPositionsEcran() {
 }
 
 /* ---------- corpuscules : maillots + traînées ---------- */
-function couleurParticule() { return P.type === 'photon' ? 0xffd766 : 0x69b7ff; }
+/* Couleur selon le type ; si « Colorer selon le sens du spin » est
+   coché, les corpuscules anti-horaires prennent une teinte distincte
+   (mélange 50/50 des deux sens → population bicolore lisible en 3D). */
+function couleurParticule(pp) {
+  if (pp && ETAT.affichage.couleurSpin && pp.spin === -1) {
+    return P.type === 'photon' ? 0xff8fd9 : 0x9dffc4;   // anti-horaire
+  }
+  return P.type === 'photon' ? 0xffd766 : 0x69b7ff;   // horaire
+}
 
 function obtenirMesh(i) {
   while (poolMeshes.length <= i) {
@@ -1966,7 +2058,7 @@ function obtenirMesh(i) {
 function majTrainee(ligne, pp) {
   if (!ETAT.affichage.trainees) { ligne.visible = false; return; }
   ligne.visible = true;
-  ligne.material.color.setHex(couleurParticule());
+  ligne.material.color.setHex(couleurParticule(pp));
   const pos = ligne.geometry.attributes.position;
   const rVis = P.rayonHelice * P.echelleHelice;
   const lamV = Math.max(P.lambdaVis, 0.05);
@@ -1977,7 +2069,7 @@ function majTrainee(ligne, pp) {
   for (let k = 0; k < 64; k++) {
     const zk = pp.z - k * pasZ;
     if (pp.passe && zk < 0) break;
-    const ph = pp.phiVis - P.spin * 2 * Math.PI * k * pasZ / lamV;
+    const ph = pp.phiVis - pp.spin * 2 * Math.PI * k * pasZ / lamV;
     pos.setXYZ(n++,
       pp.xAxe - k * pasZ * penteX + rVis * Math.cos(ph),
       pp.yAxe - k * pasZ * penteY + rVis * Math.sin(ph),
@@ -2045,7 +2137,7 @@ function majRendu(dt) {
     const pp = ETAT.particules[i];
     const m = obtenirMesh(i);
     m.visible = true;
-    m.material.color.setHex(couleurParticule());
+    m.material.color.setHex(couleurParticule(pp));
     const rVis = P.rayonHelice * P.echelleHelice;
     m.position.set(
       pp.xAxe + rVis * Math.cos(pp.phiVis),
@@ -2086,11 +2178,23 @@ function vueEcran() {
   if (controls) { controls.target.set(0, 0, P.distanceEcran); controls.update(); }
 }
 
-/* ---------- boucle principale ---------- */
+/* ---------- boucle principale ----------
+   PAS DE TEMPS FIXE (déterminisme) : le temps réel est accumulé puis
+   consommé par quanta exacts de 1/60 s. La physique ne dépend donc JAMAIS
+   de la cadence d'affichage — deux rejeux de la même configuration
+   (mêmes paramètres, même graine) produisent la même séquence d'impacts,
+   que la machine affiche 30, 60 ou 144 images/s. */
+const DT_FIXE = 1 / 60;
 function boucle() {
   requestAnimationFrame(boucle);
-  const dt = Math.min(horloge.getDelta(), 0.05);
-  if (!ETAT.enPause) pasSimulation(dt);
+  const dt = Math.min(horloge.getDelta(), 0.10);
+  if (!ETAT.enPause) {
+    ETAT.accTemps = Math.min(ETAT.accTemps + dt, DT_FIXE * 6);
+    while (ETAT.accTemps >= DT_FIXE) {
+      ETAT.accTemps -= DT_FIXE;
+      pasSimulation(DT_FIXE);
+    }
+  }
   majRendu(dt);
   if (renderer) {
     try { controls.update(); renderer.render(scene, camera); } catch (e) { /* rendu interrompu */ }
@@ -2238,9 +2342,11 @@ function majStats() {
   const taux = c.emises > 0 ? (100 * c.detectees / c.emises).toFixed(1) : '0.0';
   $('stats').innerHTML =
     'émises : <b>' + c.emises + '</b> · détectées : <b>' + c.detectees + '</b> (' + taux + ' %)<br>' +
+    'spin +1 : émis <b>' + c.emisPlus + '</b> · détectés <b>' + c.detectPlus + '</b>' +
+    ' — spin −1 : émis <b>' + c.emisMoins + '</b> · détectés <b>' + c.detectMoins + '</b><br>' +
     'absorbées (mur) : <b>' + c.absorbees + '</b> · diffusées (arête) : <b>' + c.diffusees + '</b><br>' +
     'non détectées (phase) : <b>' + c.indetectees + '</b> · collisions : <b>' + c.collisions + '</b><br>' +
-    'en vol : <b>' + ETAT.particules.length + '</b> · t<sub>sim</sub> : <b>' + ETAT.tSim.toFixed(1) + ' s</b><br>' +
+    'en vol : <b>' + ETAT.particules.length + '</b> · t<sub>sim</sub> : <b>' + ETAT.tSim.toFixed(1) + ' s</b> · graine : <b>' + ETAT.graine + '</b><br>' +
     'écart de frange Δx = λ<sub>eff</sub>·D/d : <b>' + dxThe.toFixed(1) + ' mm</b><br>' +
     'visibilité V = (I<sub>max</sub>−I<sub>min</sub>)/(I<sub>max</sub>+I<sub>min</sub>) : <b>' +
     (V === null ? '—' : V.toFixed(3)) + '</b>';
@@ -2277,10 +2383,30 @@ function imposerParametres(patch) {
   majLectureRouge();
 }
 
-/* ---------- rejouer une expérience documentée ---------- */
-function rejouerExperience(exp) {
+/* ---------- rejouer une expérience documentée ----------
+   Le rejeu préserve les réglages de MODE et de SPIN de l'utilisateur
+   (hélicoïdal par défaut) ; « forcer » permet au bouton « Témoin
+   balistique pur » d'imposer mode balistique + mélange des deux spins.
+   Graine : canonique de l'expérience (stable d'une session à l'autre)
+   si ETAT.graineCanonique, sinon la graine saisie. La purge qui suit
+   réinitialise le générateur → le rejeu est identique, particule après
+   particule, sur n'importe quelle machine. */
+function rejouerExperience(exp, forcer) {
   const m = mapperExperience(exp);
+  if (forcer) {
+    if (forcer.mode) m.patch.mode = forcer.mode;
+    if (forcer.spin !== undefined) m.patch.spin = forcer.spin;
+  }
   imposerParametres(m.patch);
+  let graine;
+  if (ETAT.graineCanonique) {
+    graine = graineExperience(exp.signature || exp.id);
+  } else {
+    const v = parseInt($('iGraine').value, 10);
+    graine = (isNaN(v) ? 42 : v) >>> 0;
+  }
+  ETAT.graine = graine;
+  $('iGraine').value = String(graine);
   purger();
   repeindreFondEcran();
   if (texEcran) texEcran.needsUpdate = true;
@@ -2288,6 +2414,8 @@ function rejouerExperience(exp) {
     exp: exp,
     dxReel: m.dxReel,
     sigma: calibrerSigma(m.dxReel),
+    graine: graine,
+    contexte: { mode: P.mode, spin: P.spin },
     modifie: false,
   };
   $('avertConfig').style.display = 'none';
@@ -2299,6 +2427,11 @@ function rejouerExperience(exp) {
 }
 
 /* ---------- carte de comparaison (expérience active) ---------- */
+function libelleMode(m) { return m === 'ballistique' ? 'balistique pur' : 'hélicoïdal'; }
+function libelleSpin(s) {
+  if (s === 0) return 'les deux (50/50)';
+  return s > 0 ? '+1 (horaire)' : '−1 (anti-horaire)';
+}
 function afficherCarteExperience() {
   const ex = ETAT.experience;
   if (!ex) { $('carteExperience').classList.add('cache'); return; }
@@ -2308,6 +2441,7 @@ function afficherCarteExperience() {
   $('expTitre').textContent = e.titre + ' (' + e.annee + ')';
   $('expDxTheo').textContent = formatLongueurM(ex.dxReel);
   $('expDxDoc').textContent = (e.dxDocumente !== undefined) ? formatLongueurM(e.dxDocumente) : 'non publié';
+  $('expGraine').textContent = ex.graine + ' · ' + libelleMode(ex.contexte.mode) + ' · spin ' + libelleSpin(ex.contexte.spin);
   let donnees = 'Données : λ = ' + formatLongueurM(e.lambda) + ' · a = ' + formatLongueurM(e.a) +
     ' · d = ' + formatLongueurM(e.d) + ' · L = ' + formatLongueurM(e.L) + ' · ' +
     (e.nbFentes >= 8 ? 'réseau (' + e.nbFentes + ' fentes)' : e.nbFentes + ' fente' + (e.nbFentes > 1 ? 's' : ''));
@@ -2332,7 +2466,11 @@ function majCarteExperience() {
     $('expDxMes').textContent = formatLongueurM(dxMes);
     const ecart = Math.abs(dxMes - ex.dxReel) / ex.dxReel;
     $('expEcart').textContent = (ecart * 100).toFixed(1) + ' %';
-    if (ecart <= 0.08) {
+    if (P.mode === 'ballistique') {
+      $('expVerdict').className = 'note att';
+      $('expVerdict').textContent = 'Témoin balistique pur : écart de ' + (ecart * 100).toFixed(0) +
+        ' % avec la théorie — l\u2019interfrange documenté n\u2019est PAS reproduit sans phase interne (enveloppe de diffraction seule). C\u2019est le résultat attendu du témoin : l\u2019écart mesure ce que la phase apporte.';
+    } else if (ecart <= 0.08) {
       $('expVerdict').className = 'note ok';
       $('expVerdict').textContent = '✓ Compatible : le modèle hélicoïdal à phase interne reproduit l\u2019interfrange prédit (écart ≤ 8 %).';
     } else {
@@ -2341,6 +2479,11 @@ function majCarteExperience() {
         ' % avec la théorie — accumulez davantage d\u2019impacts' +
         (ex.modifie ? ' ou revenez aux paramètres injectés (rejouez l\u2019expérience)' : '') + '.';
     }
+  } else if (P.mode === 'ballistique' && ETAT.compteur.detectees >= 300) {
+    $('expDxMes').textContent = '— aucune frange';
+    $('expEcart').textContent = '—';
+    $('expVerdict').className = 'note att';
+    $('expVerdict').textContent = 'Témoin balistique pur : aucune périodicité détectable — sans phase interne, les franges ne se forment pas (enveloppe de diffraction seule). C\u2019est le résultat attendu du témoin.';
   } else {
     $('expDxMes').textContent = '— accumulation…';
     $('expEcart').textContent = '—';
@@ -2378,7 +2521,7 @@ function lireMesure(vid, uid) {
   const f = FACTEURS_UNITES[$(uid).value];
   return v * f;
 }
-function appliquerCustom() {
+function appliquerCustom(forcer) {
   const lambda = lireMesure('cLambda', 'uLambda');
   const a = lireMesure('cA', 'uA');
   const d = lireMesure('cD', 'uD');
@@ -2389,15 +2532,17 @@ function appliquerCustom() {
     return;
   }
   $('erreurCustom').textContent = '';
+  const type = $('cType').value;
   rejouerExperience({
-    id: 'custom', particule: 'Particule', massif: $('cType').value === 'massif',
+    id: 'custom', particule: 'Particule', massif: type === 'massif',
     titre: 'Données personnalisées', annee: new Date().getFullYear(),
     lambda: lambda, a: a, d: d, L: L, nbFentes: n,
+    signature: ['custom', lambda, a, d, L, n, type].join('|'),
     noteA: 'données saisies par l\u2019utilisateur',
     dxDocumente: undefined,
     sourceDx: 'Δx théorique = λL/d',
     notes: [], reference: 'paramètres fournis par l\u2019utilisateur', url: '',
-  });
+  }, forcer);
 }
 
 /* ---------- montage du panneau expériences ---------- */
@@ -2430,7 +2575,16 @@ function lierExperiences() {
     const exp = EXPERIENCES.find(e => e.id === id);
     if (exp) rejouerExperience(exp);
   });
-  $('btnCustomAppliquer').addEventListener('click', appliquerCustom);
+  // témoin balistique pur : MÊME expérience, MÊME graine canonique, mais
+  // mode balistique + mélange des deux sens de spin → le même flux de
+  // corpuscules se joue sans phase interne ; seule la détection diffère.
+  $('btnTemoin').addEventListener('click', () => {
+    const id = $('selExperience').value;
+    if (id === 'custom') { appliquerCustom({ mode: 'ballistique', spin: 0 }); return; }
+    const exp = EXPERIENCES.find(e => e.id === id);
+    if (exp) rejouerExperience(exp, { mode: 'ballistique', spin: 0 });
+  });
+  $('btnCustomAppliquer').addEventListener('click', () => appliquerCustom());
   $('btnQuitterExperience').addEventListener('click', () => {
     ETAT.experience = null;
     $('carteExperience').classList.add('cache');
@@ -2452,7 +2606,9 @@ function exporterCSV() {
   const lignes = [
     '# Simulation double fente de Young — corpuscules hélicoïdaux',
     '# date : ' + new Date().toISOString(),
-    '# parametres : mode=' + p.mode + ' ; type=' + p.type + ' ; lambda_mm=' + p.lambda +
+    '# parametres : mode=' + p.mode + ' ; type=' + p.type + ' ; spin=' +
+      (p.spin === 0 ? 'mixte(50/50)' : (p.spin > 0 ? '+1' : '-1')) +
+      ' ; graine=' + ETAT.graine + ' ; lambda_mm=' + p.lambda +
       ' ; a_mm=' + p.largeurFente + ' ; d_mm=' + p.ecartFentes + ' ; N_fentes=' + p.nbFentes +
       ' ; D_mm=' + p.distanceEcran + ' ; epsilon=' + p.epsilon + ' ; divergence=' + p.divergence +
       ' ; rayon_helice_mm=' + p.rayonHelice + ' ; collisions=' + p.collisions + ' ; r_collision_mm=' + p.rayonCollision,
@@ -2515,6 +2671,16 @@ function lierInterface() {
   bindCheck('cbTrainees', ETAT.affichage, 'trainees');
   bindCheck('cbEclats', ETAT.affichage, 'eclats');
   bindCheck('cbTheorie', ETAT.affichage, 'theorie');
+  bindCheck('cbCouleurSpin', ETAT.affichage, 'couleurSpin');
+
+  // — reproductibilité —
+  bindCheck('cbGraineCanonique', ETAT, 'graineCanonique');
+  const elGraine = $('iGraine');
+  elGraine.addEventListener('change', () => {
+    const v = parseInt(elGraine.value, 10);
+    ETAT.graine = (isNaN(v) ? 42 : v) >>> 0;
+    elGraine.value = String(ETAT.graine);
+  });
 
   $('btnPause').addEventListener('click', () => {
     ETAT.enPause = !ETAT.enPause;
