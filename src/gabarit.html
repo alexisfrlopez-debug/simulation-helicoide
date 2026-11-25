@@ -38,6 +38,22 @@
   #blocCharte .legende{ font-size:10.5px; color:#93a6ca; margin-top:4px; }
   #noteUnites{ position:fixed; right:356px; bottom:10px; z-index:5; font-size:10.5px; color:#7f92b6; max-width:300px; text-align:right; text-shadow:0 1px 2px #000;}
   @media (max-width:1150px){ #noteUnites{ display:none; } }
+  /* — expériences documentées — */
+  #blocExperiences{ border-color:#2e5e46; background:rgba(16,38,28,.42); }
+  .ligne input[type=text]{ flex:1; min-width:0; background:#1a2337; color:var(--texte); border:1px solid var(--bord); border-radius:4px;
+    padding:2px 5px; font-size:11.5px; font-family:"Cascadia Mono","DejaVu Sans Mono",Consolas,monospace; }
+  .ligne select.unite{ flex:0 0 62px; }
+  #carteExperience{ margin-top:7px; border:1px solid #2e5e46; border-radius:6px; padding:5px 8px 7px; background:rgba(16,38,28,.55); }
+  #carteExperience .tete{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px; }
+  .badge{ background:#1d3a2a; border:1px solid #2e5e46; color:#6fdc9c; border-radius:4px; padding:1px 6px; font-size:10.5px; font-weight:600; white-space:nowrap; }
+  #expTitre{ font-size:11.5px; font-weight:600; color:#cfe8d8; }
+  #expModifie{ font-size:10px; color:#ffb45e; }
+  .expCmp{ background:#0d1322; border-radius:4px; padding:4px 8px; margin:4px 0; font-family:"Cascadia Mono","DejaVu Sans Mono",Consolas,monospace; font-size:11px; }
+  .expCmp .l{ display:flex; justify-content:space-between; gap:8px; line-height:1.75; }
+  .expCmp .l span{ color:#8fa3c8; }
+  .expCmp .l b{ color:var(--accent2); font-weight:600; text-align:right; }
+  .note.ok{ color:#6fdc9c; } .note.att{ color:#ffb45e; }
+  #expRef{ color:#6fdc9c; text-decoration:underline; display:block; margin-top:4px; word-break:break-all; }
 </style>
 </head>
 <body>
@@ -52,6 +68,47 @@
 
 <aside id="panneau">
   <h2>Paramètres</h2>
+  <details open id="blocExperiences">
+    <summary>Expériences documentées</summary>
+    <div class="ligne"><label for="selExperience">Expérience</label>
+      <select id="selExperience">
+        <option value="" selected>Choisir une expérience publiée…</option>
+        <option value="photon-openstax">Photon · laser He–Ne (2016)</option>
+        <option value="electron-bach-2013">Électron · un à la fois (2013)</option>
+        <option value="c60-arndt-1999">Fullerène C₆₀ · réseau (1999)</option>
+        <option value="neutron-zeilinger-1988">Neutron froid (1988)</option>
+        <option value="custom">Données personnalisées…</option>
+      </select></div>
+    <div id="infoExperience" class="note">Choisir une expérience publiée charge ses données réelles (λ, fentes, distance) et construit une maquette jouable&nbsp;; pendant la lecture, la carte ci-dessous compare l'interfrange mesuré, la théorie λL/d et la valeur documentée.</div>
+    <button id="btnRejouer" class="principal" style="width:100%;margin-top:2px">Rejouer cette expérience</button>
+
+    <div id="champsCustom" class="cache">
+      <div class="ligne"><label for="cLambda">λ (longueur d'onde)</label><input type="text" id="cLambda" value="633"><select class="unite" id="uLambda"></select></div>
+      <div class="ligne"><label for="cA">a (largeur de fente)</label><input type="text" id="cA" value="16"><select class="unite" id="uA"></select></div>
+      <div class="ligne"><label for="cD">d (écart des fentes)</label><input type="text" id="cD" value="80"><select class="unite" id="uD"></select></div>
+      <div class="ligne"><label for="cL">L (distance écran)</label><input type="text" id="cL" value="1.00"><select class="unite" id="uL"></select></div>
+      <div class="ligne"><label for="cNb">Nombre de fentes</label><input type="text" id="cNb" value="2"></div>
+      <div class="ligne"><label for="cType">Comportement au mur</label>
+        <select id="cType"><option value="photon" selected>photon — absorbé</option><option value="massif">massif — dévié</option></select></div>
+      <div id="erreurCustom" class="note" style="color:#ff9d9d"></div>
+      <button id="btnCustomAppliquer" style="width:100%">Appliquer ces données</button>
+    </div>
+
+    <div id="carteExperience" class="cache">
+      <div class="tete"><span id="expParticule" class="badge"></span><span id="expTitre"></span><span id="expModifie" class="cache">⚠ maquette modifiée</span></div>
+      <div class="expCmp">
+        <div class="l"><span>Δx théorie (λL/d)</span><b id="expDxTheo"></b></div>
+        <div class="l"><span>Δx mesuré (sim, <span id="expImpacts">0</span> impacts)</span><b id="expDxMes"></b></div>
+        <div class="l"><span>Δx documenté</span><b id="expDxDoc"></b></div>
+        <div class="l"><span>écart sim / théorie</span><b id="expEcart"></b></div>
+      </div>
+      <div id="expVerdict" class="note"></div>
+      <div id="expDonnees" class="note"></div>
+      <a id="expRef" class="note" href="#" target="_blank" rel="noreferrer"></a>
+      <button id="btnQuitterExperience" style="width:100%">Quitter le mode expérience</button>
+    </div>
+    <div class="note">La scène 3D est une maquette à l'échelle de la fenêtre du détecteur (nombre de franges, enveloppe a/d et nombre de fentes conservés)&nbsp;; l'histogramme et Δx sont convertis en unités réelles (m) par l'étalon σ calibré sur le moteur exact.</div>
+  </details>
   <details open>
     <summary>Mode &amp; particules</summary>
     <div class="ligne"><label for="selMode">Mode de vol</label>
@@ -75,7 +132,7 @@
     <div class="ligne"><label for="rLenteur">Ralenti (×)</label><input type="range" id="rLenteur" min="0.02" max="1" step="0.01" value="1"><span class="val" id="vLenteur"></span></div>
     <div class="ligne"><label for="rFaisceau">Largeur du faisceau</label><input type="range" id="rFaisceau" min="2" max="30" step="0.5" value="10"><span class="val" id="vFaisceau"></span></div>
     <div class="ligne"><label for="selNbFentes">Nombre de fentes</label>
-      <select id="selNbFentes"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
+      <select id="selNbFentes"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
     <div class="ligne"><label for="rLargeurFente">Largeur de fente a</label><input type="range" id="rLargeurFente" min="0.4" max="5" step="0.05" value="1.6"><span class="val" id="vLargeurFente"></span></div>
     <div class="ligne"><label for="rEcartFentes">Écart des fentes d</label><input type="range" id="rEcartFentes" min="1" max="14" step="0.1" value="4"><span class="val" id="vEcartFentes"></span></div>
     <div class="ligne"><label for="rHauteurFente">Hauteur de fente</label><input type="range" id="rHauteurFente" min="20" max="120" step="5" value="60"><span class="val" id="vHauteurFente"></span></div>

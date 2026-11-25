@@ -6,10 +6,16 @@
 
 function $(id) { return document.getElementById(id); }
 
+/* ---------- registre des liaisons (pour injecter des valeurs) ---------- */
+const LIAISONS = {};     // clé de paramètre -> id d'élément
+const RAFRAICHIRS = {};   // clé de paramètre -> fct de rafraîchissement de l'affichage
+
 /* ---------- liaisons génériques ---------- */
 function bindRange(id, cle, unite, dec, apres) {
   const el = $(id), val = $('v' + id.slice(1));
+  LIAISONS[cle] = id;
   const rafraichir = () => { val.textContent = parseFloat(el.value).toFixed(dec) + (unite || ''); };
+  RAFRAICHIRS[cle] = rafraichir;
   el.addEventListener('input', () => {
     P[cle] = parseFloat(el.value);
     rafraichir();
@@ -21,6 +27,7 @@ function bindRange(id, cle, unite, dec, apres) {
 }
 function bindSelect(id, cle, entier, apres) {
   const el = $(id);
+  LIAISONS[cle] = id;
   const maj = () => {
     P[cle] = entier ? parseInt(el.value, 10) : el.value;
     if (apres) apres();
@@ -30,11 +37,13 @@ function bindSelect(id, cle, entier, apres) {
 }
 function bindCheck(id, obj, cle) {
   const el = $(id);
+  LIAISONS[cle] = id;
   el.addEventListener('change', () => { obj[cle] = el.checked; });
   obj[cle] = el.checked;
 }
 function marquerSale() {
   ETAT.configSale = true;
+  if (ETAT.experience) ETAT.experience.modifie = true;
   $('avertConfig').style.display = 'block';
 }
 function reconfigMur(initiale) {
@@ -133,6 +142,197 @@ function majStats() {
     'écart de frange Δx = λ<sub>eff</sub>·D/d : <b>' + dxThe.toFixed(1) + ' mm</b><br>' +
     'visibilité V = (I<sub>max</sub>−I<sub>min</sub>)/(I<sub>max</sub>+I<sub>min</sub>) : <b>' +
     (V === null ? '—' : V.toFixed(3)) + '</b>';
+  majCarteExperience();
+}
+
+/* ============================================================
+   EXPÉRIENCES DOCUMENTÉES — injection d'une maquette, carte de
+   comparaison Δx mesuré / théorie / documenté, données
+   personnalisées.
+   ============================================================ */
+
+const FACTEURS_UNITES = { pm: 1e-12, nm: 1e-9, 'µm': 1e-6, mm: 1e-3, cm: 1e-2, m: 1 };
+const UNITES_TEXTE = [['pm', 1e-12], ['nm', 1e-9], ['µm', 1e-6], ['mm', 1e-3], ['cm', 1e-2], ['m', 1]];
+
+/* ---------- injection programmatique de paramètres ---------- */
+function imposerParametres(patch) {
+  for (const cle of Object.keys(patch)) {
+    P[cle] = patch[cle];
+    const id = LIAISONS[cle];
+    if (id) {
+      const el = $(id);
+      if (el.type === 'checkbox') el.checked = !!patch[cle];
+      else el.value = patch[cle];
+    }
+    if (RAFRAICHIRS[cle]) RAFRAICHIRS[cle]();
+  }
+  $('ligneSigma').style.display = (P.divergence === 'gaussienne') ? 'flex' : 'none';
+  // reconstructions cohérentes de la scène
+  reconstruireMur();
+  repeindreFondEcran();
+  if (texEcran) texEcran.needsUpdate = true;
+  majPositionsEcran();
+  majLectureRouge();
+}
+
+/* ---------- rejouer une expérience documentée ---------- */
+function rejouerExperience(exp) {
+  const m = mapperExperience(exp);
+  imposerParametres(m.patch);
+  purger();
+  repeindreFondEcran();
+  if (texEcran) texEcran.needsUpdate = true;
+  ETAT.experience = {
+    exp: exp,
+    dxReel: m.dxReel,
+    sigma: calibrerSigma(m.dxReel),
+    modifie: false,
+  };
+  $('avertConfig').style.display = 'none';
+  afficherCarteExperience();
+  majCarteExperience();
+  vueEnsemble();
+  dessinerCharte();
+  majStats();
+}
+
+/* ---------- carte de comparaison (expérience active) ---------- */
+function afficherCarteExperience() {
+  const ex = ETAT.experience;
+  if (!ex) { $('carteExperience').classList.add('cache'); return; }
+  $('carteExperience').classList.remove('cache');
+  const e = ex.exp;
+  $('expParticule').textContent = e.particule;
+  $('expTitre').textContent = e.titre + ' (' + e.annee + ')';
+  $('expDxTheo').textContent = formatLongueurM(ex.dxReel);
+  $('expDxDoc').textContent = (e.dxDocumente !== undefined) ? formatLongueurM(e.dxDocumente) : 'non publié';
+  let donnees = 'Données : λ = ' + formatLongueurM(e.lambda) + ' · a = ' + formatLongueurM(e.a) +
+    ' · d = ' + formatLongueurM(e.d) + ' · L = ' + formatLongueurM(e.L) + ' · ' +
+    (e.nbFentes >= 8 ? 'réseau (' + e.nbFentes + ' fentes)' : e.nbFentes + ' fente' + (e.nbFentes > 1 ? 's' : ''));
+  if (e.noteA) donnees += '<br>' + e.noteA;
+  for (const nt of e.notes) donnees += '<br>' + nt;
+  donnees += '<br>Δx documenté — ' + e.sourceDx;
+  $('expDonnees').innerHTML = donnees;
+  const ref = $('expRef');
+  if (e.url) { ref.href = e.url; ref.textContent = e.reference; ref.style.display = 'block'; }
+  else { ref.style.display = 'none'; }
+}
+
+function majCarteExperience() {
+  const ex = ETAT.experience;
+  if (!ex || !$('carteExperience')) return;
+  if ($('carteExperience').classList.contains('cache')) return;
+  $('expImpacts').textContent = ETAT.compteur.detectees;
+  $('expModifie').classList.toggle('cache', !ex.modifie);
+  const dxScene = interfrangeMesuree();
+  const dxMes = (dxScene !== null && ex.sigma) ? dxScene * ex.sigma : null;
+  if (dxMes !== null) {
+    $('expDxMes').textContent = formatLongueurM(dxMes);
+    const ecart = Math.abs(dxMes - ex.dxReel) / ex.dxReel;
+    $('expEcart').textContent = (ecart * 100).toFixed(1) + ' %';
+    if (ecart <= 0.08) {
+      $('expVerdict').className = 'note ok';
+      $('expVerdict').textContent = '✓ Compatible : le modèle hélicoïdal à phase interne reproduit l\u2019interfrange prédit (écart ≤ 8 %).';
+    } else {
+      $('expVerdict').className = 'note att';
+      $('expVerdict').textContent = 'Écart de ' + (ecart * 100).toFixed(0) +
+        ' % avec la théorie — accumulez davantage d\u2019impacts' +
+        (ex.modifie ? ' ou revenez aux paramètres injectés (rejouez l\u2019expérience)' : '') + '.';
+    }
+  } else {
+    $('expDxMes').textContent = '— accumulation…';
+    $('expEcart').textContent = '—';
+    $('expVerdict').className = 'note';
+    $('expVerdict').textContent = 'Laissez la figure se construire : l\u2019interfrange mesuré apparaît dès que la statistique suffit (~400 impacts détectés).';
+  }
+}
+
+/* ---------- sélection & informations ---------- */
+function majInfoExperience(exp, estCustom) {
+  const el = $('infoExperience');
+  if (estCustom) {
+    el.innerHTML = 'Saisir λ, a, d, L et le nombre de fentes d\u2019une expérience publiée ou d\u2019un TP, puis appliquer : la maquette et la carte de comparaison utiliseront ces données réelles.';
+    return;
+  }
+  if (!exp) {
+    el.innerHTML = 'Choisir une expérience publiée charge ses données réelles (λ, fentes, distance) et construit une maquette jouable ; pendant la lecture, la carte ci-dessous compare l\u2019interfrange mesuré, la théorie λL/d et la valeur documentée.';
+    return;
+  }
+  let s = '<b>' + exp.titre + '</b> (' + exp.annee + ')<br>' +
+    'λ = ' + formatLongueurM(exp.lambda) + ' · a = ' + formatLongueurM(exp.a) +
+    ' · d = ' + formatLongueurM(exp.d) + ' · L = ' + formatLongueurM(exp.L) + ' · ' +
+    (exp.nbFentes >= 8 ? 'réseau (' + exp.nbFentes + ' fentes)' : exp.nbFentes + ' fente' + (exp.nbFentes > 1 ? 's' : ''));
+  for (const nt of exp.notes) s += '<br>' + nt;
+  s += '<br>Δx : ' + exp.sourceDx + ((exp.dxDocumente !== undefined) ? ' — ' + formatLongueurM(exp.dxDocumente) : '');
+  if (exp.noteA) s += '<br><i>' + exp.noteA + '</i>';
+  s += '<br><a href="' + exp.url + '" target="_blank" rel="noreferrer">' + exp.reference + '</a>';
+  el.innerHTML = s;
+}
+
+/* ---------- données personnalisées ---------- */
+function lireMesure(vid, uid) {
+  const v = parseFloat($(vid).value.replace(',', '.'));
+  if (isNaN(v)) return NaN;
+  const f = FACTEURS_UNITES[$(uid).value];
+  return v * f;
+}
+function appliquerCustom() {
+  const lambda = lireMesure('cLambda', 'uLambda');
+  const a = lireMesure('cA', 'uA');
+  const d = lireMesure('cD', 'uD');
+  const L = lireMesure('cL', 'uL');
+  const n = parseInt($('cNb').value, 10);
+  if (!(lambda > 0) || !(a > 0) || !(d > a) || !(L > 0) || !(n >= 1 && n <= 8)) {
+    $('erreurCustom').textContent = 'Valeurs invalides : il faut λ > 0, d > a > 0, L > 0 et 1 ≤ N ≤ 8.';
+    return;
+  }
+  $('erreurCustom').textContent = '';
+  rejouerExperience({
+    id: 'custom', particule: 'Particule', massif: $('cType').value === 'massif',
+    titre: 'Données personnalisées', annee: new Date().getFullYear(),
+    lambda: lambda, a: a, d: d, L: L, nbFentes: n,
+    noteA: 'données saisies par l\u2019utilisateur',
+    dxDocumente: undefined,
+    sourceDx: 'Δx théorique = λL/d',
+    notes: [], reference: 'paramètres fournis par l\u2019utilisateur', url: '',
+  });
+}
+
+/* ---------- montage du panneau expériences ---------- */
+function lierExperiences() {
+  // menus d'unités
+  const remplirUnites = (id, defaut) => {
+    const sel = $(id);
+    for (const [t] of UNITES_TEXTE) {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      if (t === defaut) o.selected = true;
+      sel.appendChild(o);
+    }
+  };
+  remplirUnites('uLambda', 'nm');
+  remplirUnites('uA', 'µm');
+  remplirUnites('uD', 'µm');
+  remplirUnites('uL', 'm');
+
+  $('selExperience').addEventListener('change', () => {
+    const id = $('selExperience').value;
+    $('champsCustom').classList.toggle('cache', id !== 'custom');
+    $('erreurCustom').textContent = '';
+    majInfoExperience(EXPERIENCES.find(e => e.id === id) || null, id === 'custom');
+  });
+
+  $('btnRejouer').addEventListener('click', () => {
+    const id = $('selExperience').value;
+    if (id === 'custom') { appliquerCustom(); return; }
+    const exp = EXPERIENCES.find(e => e.id === id);
+    if (exp) rejouerExperience(exp);
+  });
+  $('btnCustomAppliquer').addEventListener('click', appliquerCustom);
+  $('btnQuitterExperience').addEventListener('click', () => {
+    ETAT.experience = null;
+    $('carteExperience').classList.add('cache');
+  });
 }
 
 /* ---------- export CSV ---------- */
@@ -237,6 +437,7 @@ function lierInterface() {
 function initialiser() {
   initRendu();
   lierInterface();
+  lierExperiences();
   majLectureRouge();
   dessinerCharte();
   majStats();

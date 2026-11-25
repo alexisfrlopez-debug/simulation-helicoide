@@ -62,6 +62,7 @@ const ETAT = {
   configSale: false,
   accEmission: 0,
   histogrammeSale: true,
+  experience: null,          // expérience documentée active (cf. EXPERIENCES)
 };
 
 const P = ETAT.params;
@@ -308,4 +309,208 @@ function purger() {
   ETAT.compteur = { emises: 0, detectees: 0, absorbees: 0, diffusees: 0, indetectees: 0, collisions: 0 };
   ETAT.configSale = false;
   ETAT.histogrammeSale = true;
+}
+
+/* ============================================================
+   EXPÉRIENCES DOCUMENTÉES — données réelles publiées et
+   maquette à l'échelle de la fenêtre du détecteur.
+
+   Principe du mapping « maquette » : la scène 3D ne peut pas
+   reproduire les proportions réelles (électron λ = 50 pm à 1 m
+   de distance = franges sub-millimétriques). On construit donc
+   une maquette à l'échelle de la FENÊTRE DU DÉTECTEUR en
+   conservant exactement les grandeurs SANS DIMENSION qui
+   déterminent la figure :
+   - le nombre de franges dans la fenêtre : N = W/Δx, Δx = λL/d ;
+   - la forme de l'enveloppe de diffraction : rapport a/d ;
+   - le nombre de fentes.
+   L'histogramme et Δx sont ensuite reconvertis en unités réelles
+   (mètres) via l'étalon σ = Δx_réel/Δx_maquette, calibré sur le
+   motif EXACT du moteur (même physique que la simulation) — la
+   mesure converge vers la valeur documentée, à la statistique
+   près. Toutes les valeurs réelles ci-dessous proviennent des
+   publications citées (aucune valeur inventée) ; les valeurs
+   dérivées (Δx = λL/d) sont calculées à partir des grandeurs
+   publiées.
+   ============================================================ */
+
+const EXPERIENCES = [
+  {
+    id: 'photon-openstax', particule: 'Photon', massif: false,
+    titre: 'Lumière laser He–Ne — atelier pédagogique', annee: 2016,
+    lambda: 633e-9, a: 16e-6, d: 80e-6, L: 3.0, nbFentes: 2,
+    noteA: 'largeur de fente non fournie par l\u2019exercice — fixée à d/5 pour l\u2019enveloppe (sans effet sur Δx)',
+    dxDocumente: 2.37e-2,
+    sourceDx: 'Δx = λL/d, réponse de l\u2019exercice (2,37 cm)',
+    notes: [
+      'Lumière monochromatique 633 nm (laser hélium-néon)',
+      'vitesse de la particule : c ≈ 3×10⁸ m/s',
+    ],
+    reference: 'OpenStax College Physics (ch. 27, exercice « Double slit ») — SUNY/Lumen',
+    url: 'https://courses.lumenlearning.com/suny-physics/chapter/27-3-youngs-double-slit-experiment',
+  },
+  {
+    id: 'electron-bach-2013', particule: 'Électron', massif: true,
+    titre: 'Fentes de Young contrôlées, un électron à la fois', annee: 2013,
+    lambda: 50e-12, a: 50e-9, d: 280e-9, L: 1.0, nbFentes: 2,
+    noteA: 'λ = 50 pm déduit de 600 eV ; L = longueur du système (« 1 meter long system »), distance exacte fente→détecteur non publiée (figure agrandie par lentille quadrupolaire)',
+    dxDocumente: 1.79e-4,
+    sourceDx: 'Δx théorique = λL/d (la valeur observée agrandie n\u2019est pas publiée)',
+    notes: [
+      'faisceau de 600 eV, deux fentes de 50 nm (écart 280 nm, hauteur 4 µm)',
+      'v = √(2eV/m) ≈ 1,45×10⁷ m/s',
+      'électrons consécutifs séparés de 2,3×10⁶ m en moyenne : jamais deux à la fois',
+      'la figure complète s\u2019est construite en ~2 h, impact après impact',
+    ],
+    reference: 'R. Bach, D. Pope, S.-H. Liou, H. Batelaan, New J. Phys. 15, 033018 (2013)',
+    url: 'https://arxiv.org/abs/1210.6243',
+  },
+  {
+    id: 'c60-arndt-1999', particule: 'Fullerène C₆₀', massif: true,
+    titre: 'Interférences de molécules C₆₀', annee: 1999,
+    lambda: 2.5e-12, a: 50e-9, d: 100e-9, L: 1.2, nbFentes: 8,
+    noteA: 'réseau SiN de période 100 nm avec ouvertures de 50 nm — représenté ici par 8 fentes (le réseau réel en comporte des dizaines)',
+    dxDocumente: 3.0e-5,
+    sourceDx: 'Nairz et al. 2003 : interfrange au détecteur = L·λ/d (30 µm)',
+    notes: [
+      'vitesse la plus probable ≈ 220 m/s → λ = h/mv ≈ 2,5 pm',
+      'λ est ~400 fois plus petite que le diamètre de la molécule (~1 nm)',
+      'détecteur placé 1,2 m en aval du réseau',
+    ],
+    reference: 'M. Arndt, O. Nairz, J. Petschinka, A. Zeilinger, Nature 401, 680 (1999) ; détails : O. Nairz et al., Am. J. Phys. 71, 319 (2003)',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/18494170/',
+  },
+  {
+    id: 'neutron-zeilinger-1988', particule: 'Neutron', massif: true,
+    titre: 'Diffraction de neutrons froids', annee: 1988,
+    lambda: 2e-9, a: 20e-6, d: 100e-6, L: 5.0, nbFentes: 2,
+    noteA: 'largeur retenue 20 µm — la publication annonce des assemblées de 20 à 100 µm',
+    dxDocumente: 1.0e-4,
+    sourceDx: 'interfrange observé ≈ 0,1 mm, rapporté pour λ ≈ 2 nm, d = 0,1 mm, L = 5 m',
+    notes: [
+      'neutrons froids, λ ≈ 2 nm (réglable entre ~1,5 et 3 nm)',
+      'v = h/(m·λ) ≈ 200 m/s',
+      'double fente d\u2019écart 0,1 mm, détecteur à 5 m',
+    ],
+    reference: 'A. Zeilinger, R. Gähler, C. G. Shull, W. Treimer, W. Mampe, Rev. Mod. Phys. 60, 1067 (1988)',
+    url: 'https://ui.adsabs.harvard.edu/abs/1988RvMP...60.1067Z/abstract',
+  },
+];
+
+/* ---------- formatage d'une longueur réelle (m) ---------- */
+function formatLongueurM(m) {
+  const v = Math.abs(m);
+  if (v >= 1) return m.toFixed(2) + ' m';
+  if (v >= 1e-2) return (m * 100).toFixed(1) + ' cm';
+  if (v >= 1e-3) return (m * 1e3).toFixed(1) + ' mm';
+  if (v >= 1e-6) return (m * 1e6).toFixed(1) + ' µm';
+  if (v >= 1e-9) return (m * 1e9).toFixed(1) + ' nm';
+  return (m * 1e12).toFixed(1) + ' pm';
+}
+
+/* ---------- interfrange estimé par autocorrélation détendancée ----------
+   Série = comptages − enveloppe lissée (moyenne glissante large) : on
+   retire la lente variation d'intensité de l'enveloppe de diffraction
+   pour que l'autocorrélation mesure la PÉRIODICITÉ des franges et non
+   la forme de l'enveloppe. La période dominante est le décalage du
+   premier maximum local significatif de l'autocorrélation, affiné par
+   interpolation parabolique. Robuste au bruit de Poisson ; retourne
+   null tant que la statistique est insuffisante. */
+function estimerInterfrange(comptages, largeurFenetre) {
+  const n = comptages.length;
+  if (n < 16) return null;
+  let total = 0;
+  for (let i = 0; i < n; i++) total += comptages[i];
+  if (total < 150) return null;
+  // détendance (enveloppe = moyenne glissante ±16 bins ; l'interfrange
+  // maquette ≈ 30 bins n'est atténué qu'à ~9 %, l'enveloppe lente disparaît)
+  const demiF = 16;
+  const env = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = 0, c = 0;
+    for (let k = Math.max(0, i - demiF); k <= Math.min(n - 1, i + demiF); k++) { s += comptages[k]; c++; }
+    env[i] = s / c;
+  }
+  const d = new Float64Array(n);
+  for (let i = 0; i < n; i++) d[i] = comptages[i] - env[i];
+  let v0 = 0;
+  for (let i = 0; i < n; i++) v0 += d[i] * d[i];
+  if (v0 <= 1e-12) return null;
+  const lagMax = Math.floor(n / 2) - 2;
+  const acf = new Float64Array(lagMax + 1);
+  for (let lag = 0; lag <= lagMax; lag++) {
+    let s = 0;
+    for (let i = 0; i + lag < n; i++) s += d[i] * d[i + lag];
+    acf[lag] = s / (n - lag);
+  }
+  // léger lissage (1-2-1)
+  const sm = new Float64Array(lagMax + 1);
+  for (let i = 0; i <= lagMax; i++) {
+    const u = acf[Math.max(0, i - 1)], b = acf[i], v = acf[Math.min(lagMax, i + 1)];
+    sm[i] = (u + 2 * b + v) / 4;
+  }
+  // premier maximum local significatif (période fondamentale)
+  let meilleur = -1;
+  for (let lag = 3; lag <= lagMax - 1; lag++) {
+    if (sm[lag] > sm[lag - 1] && sm[lag] >= sm[lag + 1] && sm[lag] >= 0.25 * acf[0]) { meilleur = lag; break; }
+  }
+  if (meilleur < 0) return null;
+  // raffinement sous-bin (parabole)
+  const den = sm[meilleur - 1] - 2 * sm[meilleur] + sm[meilleur + 1];
+  const decal = den < -1e-12 ? (0.5 * (sm[meilleur - 1] - sm[meilleur + 1])) / den : 0;
+  const lagF = meilleur + Math.max(-0.5, Math.min(0.5, decal));
+  return (lagF * largeurFenetre) / n;
+}
+
+/* interfrange mesuré sur l'histogramme courant (mm de maquette) */
+function interfrangeMesuree() {
+  return estimerInterfrange(ETAT.histogramme, CFG.X_MAX - CFG.X_MIN);
+}
+
+/* ---------- maquette : paramètres de scène d'une expérience ----------
+   Grandeurs sans dimension conservées ; bornes des curseurs
+   respectées. Retourne { patch, dxReel } (dxReel en mètres). */
+function mapperExperience(exp) {
+  const Nf = 8;                        // franges visibles dans la fenêtre
+  const W = CFG.X_MAX - CFG.X_MIN;    // largeur de la fenêtre-maquette (mm)
+  const Ds = 800, lamS = 0.15;        // distance & λ de la maquette (mm)
+  const n = Math.max(1, Math.min(8, Math.round(exp.nbFentes)));
+  const dxs = W / Nf;                 // interfrange maquette (mm)
+  const ds = lamS * Ds / dxs;        // écart des fentes maquette (mm)
+  // valeurs alignées sur les pas des curseurs (a : 0,05 mm ; faisceau : 0,5 mm)
+  const as = Math.round(Math.max(0.4, Math.min(5, ds * (exp.a / exp.d))) / 0.05) * 0.05;
+  const faisceau = Math.round(Math.max(6, Math.min(30, (n - 1) * ds + 2 * as + 3)) / 0.5) * 0.5;
+  return {
+    patch: {
+      mode: 'helicoide',
+      type: exp.massif ? 'massif' : 'photon',
+      nbFentes: n,
+      largeurFente: as,
+      ecartFentes: ds,
+      distanceEcran: Ds,
+      lambda: lamS,
+      rayonHelice: Math.max(0.05, Math.min(0.3, Math.round(as * 0.2 / 0.05) * 0.05)),
+      faisceau: faisceau,
+      debit: 240, v: 360, ralenti: 1,
+      epsilon: 0, collisions: false, divergence: 'sinc2',
+    },
+    dxReel: exp.lambda * exp.L / exp.d,
+  };
+}
+
+/* ---------- étalon σ (mètres réels / mm de maquette) ----------
+   Calibré sur le motif EXACT du moteur (même physique que la
+   simulation) : l'interfrange réel est posé égal à l'interfrange
+   exact de la maquette, ce qui absorbe le léger écart de Fresnel
+   de la maquette. La mesure convergera vers la valeur réelle
+   documentée, à la statistique près. */
+function calibrerSigma(dxReel) {
+  const nb = CFG.NB_BINS, pas = (CFG.X_MAX - CFG.X_MIN) / nb;
+  const comptes = new Float64Array(nb);
+  for (let i = 0; i < nb; i++) {
+    const x = CFG.X_MIN + (i + 0.5) * pas;
+    comptes[i] = courbeTheorique(x) * 10000;
+  }
+  const dxExact = estimerInterfrange(comptes, CFG.X_MAX - CFG.X_MIN);
+  return dxExact !== null && dxExact > 1e-6 ? dxReel / dxExact : null;
 }

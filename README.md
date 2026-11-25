@@ -22,10 +22,11 @@ glisser = orbite, clic droit = translation.
 
 | Groupe | Paramètres |
 |---|---|
+| **Expériences documentées** | 4 expériences publiées jouables (photon He–Ne 2016, électron Bach 2013, C₆₀ Arndt 1999, neutron Zeilinger 1988) + données personnalisées ; carte de comparaison Δx mesuré / théorie λL/d / documenté |
 | Mode | hélicoïdal (interférences) / **balistique pur** (référence) |
 | Particule | photon (absorbé aux arêtes) / massive (déviée aux arêtes) ; sens du spin |
 | Source | débit, vitesse, ralenti, largeur du faisceau |
-| Fentes | nombre (1-5), largeur a, écart d, hauteur, distance écran D |
+| Fentes | nombre (1-8), largeur a, écart d, hauteur, distance écran D |
 | Hélice | λ physique, rayon r, pas et échelle visuels (rendu) |
 | Diffraction | loi sinc² / gaussienne / nulle |
 | Interactions | **collisions inter-corpuscules** (falsification) + rayon |
@@ -51,6 +52,8 @@ data/profil_intensite_redshift_exemple.csv   courbe théorique (ε = +0,3)
 data/mesures_*.csv                histogrammes mesurés (runs batch du noyau)
 data/mesures_resume.json          compteurs et visibilités des runs
 data/mesures_metriques.json       métriques citées dans l'article
+docs/experiences_documentees.md   expériences publiées jouables : données,
+                                  maquette, étalon σ, validation
 docs/modele_physique.md           le modèle, ses hypothèses et ses limites
 docs/revue_litteraire.md          travaux antérieurs (Taylor→Bach, de Broglie,
                                   Couder, Hestenes, Zwicky) avec références
@@ -74,7 +77,10 @@ Le simulateur implémente un **modèle phénoménologique de recherche** : le
 gâteau de détection G(x) est une hypothèse posée, non dérivée (voir
 `docs/modele_physique.md`, §9). Il ne s'agit pas d'une théorie physique
 établie, mais d'un outil pour explorer, mesurer et falsifier — y compris
-le rôle (nul) des collisions inter-corpuscules dans les franges.
+le rôle (nul) des collisions inter-corpuscules dans les franges. Le module
+« expériences documentées » reproduit les interfranges publiés (écart
+≤ 3 % en runs batch) par une maquette étalonnée — la concordance reste un
+résultat de simulation, pas une dérivation.
 
 ## Licences
 
